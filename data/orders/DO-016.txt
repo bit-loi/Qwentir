@@ -1,0 +1,11 @@
+SURAT PERINTAH KIRIM BBM
+No. Order   : DO-016
+Tanggal     : 16/11/2026
+Klien       : PT Energi Niaga Utama
+Transportir : PT Nusantara Tangki Mandiri
+Produk      : Dexlite
+Volume muat : 24.000 liter
+Depot asal  : Depot BBM Balonggede
+Tujuan      : SPBU 34.402.03 Pondok Gede
+Nopol       : B 9789 TUV
+Sopir       : Joko Susilo

@@ -1,0 +1,11 @@
+SURAT PERINTAH KIRIM BBM
+No. Order   : DO-012
+Tanggal     : 12/11/2026
+Klien       : PT Energi Niaga Utama
+Transportir : PT Nusantara Tangki Mandiri
+Produk      : Dex
+Volume muat : 16.000 liter
+Depot asal  : Depot BBM Balonggede
+Tujuan      : PT Tekstil Makmur Abadi
+Nopol       : B 9678 YZA
+Sopir       : Taufik Rahman

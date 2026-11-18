@@ -1,0 +1,11 @@
+SURAT PERINTAH KIRIM BBM
+No. Order   : DO-042
+Tanggal     : 16/11/2026
+Klien       : PT Energi Niaga Utama
+Transportir : PT Nusantara Tangki Mandiri
+Produk      : Pertamax
+Volume muat : 16.000 liter
+Depot asal  : Depot BBM Muara Karang
+Tujuan      : SPBU 34.508.19 Cileungsi
+Nopol       : B 9234 EFG
+Sopir       : Slamet Riyanto

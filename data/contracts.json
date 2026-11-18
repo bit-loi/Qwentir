@@ -1,0 +1,31 @@
+{
+  "nomor_kontrak": "ENU-NTM/2026/001",
+  "klien": "PT Energi Niaga Utama",
+  "transportir": "PT Nusantara Tangki Mandiri",
+  "periode_kontrak": "2026-01-01 s.d. 2026-12-31",
+  "toleransi_susut_persen": 0.5,
+  "tarif_angkut_per_liter": 500,
+  "harga_produk_per_liter": {
+    "Pertalite": 10000,
+    "Pertamax": 12500,
+    "Biosolar": 6800,
+    "Dexlite": 14000
+  },
+  "alias_produk": {
+    "PTL": "Pertalite",
+    "PMX": "Pertamax",
+    "B30": "Biosolar",
+    "Dex": "Dexlite",
+    "RON 90": "Pertalite",
+    "RON 92": "Pertamax",
+    "Solar": "Biosolar",
+    "SOL": "Biosolar"
+  },
+  "aturan_denda": {
+    "dasar": "susut di atas toleransi dihitung sebagai kelebihan liter",
+    "kelebihan_liter": "susut_liter - (volume_muat_liter x toleransi_susut_persen / 100)",
+    "denda": "kelebihan_liter x harga_produk_per_liter",
+    "penerapan": "dipotong dari invoice"
+  },
+  "batas_overdue_pod_hari": 3
+}

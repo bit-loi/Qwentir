@@ -1,0 +1,8 @@
+From: logistik@eneraginiaga.example
+To: ops@nusantarata.ngki.example
+Subject: Kirim DO-024
+
+Pak, tolong kirim DO-024 ya.
+Produk Dexlite, muat 16.000 liter, dari Depot BBM Balonggede ke PT Tekstil Makmur Abadi.
+Truk B 9678 YZA (Taufik Rahman), tanggal 07/11/2026.
+Thanks.

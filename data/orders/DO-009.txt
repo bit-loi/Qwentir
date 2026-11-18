@@ -1,0 +1,8 @@
+From: logistik@eneraginiaga.example
+To: ops@nusantarata.ngki.example
+Subject: Kirim DO-009
+
+Pak, tolong kirim DO-009 ya.
+Produk Pertalite, muat 16.000 liter, dari Depot BBM Tanjung Sekong ke SPBU 34.707.22 Serpong.
+Truk T 8234 QR (Yusuf Maulana), tanggal 09/11/2026.
+Thanks.

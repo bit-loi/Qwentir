@@ -1,0 +1,11 @@
+SURAT PERINTAH KIRIM BBM
+No. Order   : DO-008
+Tanggal     : 08/11/2026
+Klien       : PT Energi Niaga Utama
+Transportir : PT Nusantara Tangki Mandiri
+Produk      : Dex
+Volume muat : 8.000 liter
+Depot asal  : Depot BBM Balonggede
+Tujuan      : PT Plastik Nusantara Jaya
+Nopol       : B 9345 NOP
+Sopir       : Rahmat Hidayat

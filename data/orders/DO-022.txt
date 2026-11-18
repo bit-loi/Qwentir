@@ -1,0 +1,11 @@
+SURAT PERINTAH KIRIM BBM
+No. Order   : DO-022
+Tanggal     : 05/11/2026
+Klien       : PT Energi Niaga Utama
+Transportir : PT Nusantara Tangki Mandiri
+Produk      : RON 92
+Volume muat : 24.000 liter
+Depot asal  : Depot BBM Muara Karang
+Tujuan      : SPBU 34.815.09 Cikupa
+Nopol       : B 9567 STU
+Sopir       : Bambang Prasetyo

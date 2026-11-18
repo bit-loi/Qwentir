@@ -1,0 +1,8 @@
+From: logistik@eneraginiaga.example
+To: ops@nusantarata.ngki.example
+Subject: Kirim DO-017
+
+Pak, tolong kirim DO-017 ya.
+Produk Pertalite, muat 8.000 liter, dari Depot BBM Tanjung Sekong ke PT Kimia Industri Raya.
+Truk F 8123 CD (Hendra Wijaya), tanggal 17/11/2026.
+Thanks.

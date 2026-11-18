@@ -1,0 +1,8 @@
+From: logistik@eneraginiaga.example
+To: ops@nusantarata.ngki.example
+Subject: Kirim DO-003
+
+Pak, tolong kirim DO-003 ya.
+Produk Solar, muat 16.000 liter, dari Depot BBM Cikarang Barat ke SPBU 34.310.12 Tanjung Duren.
+Truk D 8421 AB (Agus Riyadi), tanggal 03/11/2026.
+Thanks.

@@ -1,0 +1,20 @@
+{
+  "name": "78a308f6",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "pdfkit": "^0.20.2",
+    "sharp": "^0.35.5"
+  },
+  "devDependencies": {
+    "mupdf": "^1.28.6"
+  }
+}

@@ -1,0 +1,8 @@
+From: logistik@eneraginiaga.example
+To: ops@nusantarata.ngki.example
+Subject: Kirim DO-023
+
+Pak, tolong kirim DO-023 ya.
+Produk B30, muat 8.000 liter, dari Depot BBM Cikarang Barat ke Pabrik Gula Tanjung Sari.
+Truk D 8678 VWX (Eko Saputra), tanggal 06/11/2026.
+Thanks.

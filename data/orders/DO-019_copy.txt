@@ -1,0 +1,8 @@
+From: logistik@eneraginiaga.example
+To: ops@nusantarata.ngki.example
+Subject: Kirim DO-019 (resi ulang)
+
+Pak, tolong kirim DO-019 ya.
+Produk Biosolar, muat 24.000 liter, dari Depot BBM Cikarang Barat ke SPBU 34.611.04 Marunda.
+Truk D 8567 HIJ (Dedi Kurniawan), tanggal 02/11/2026.
+Thanks.

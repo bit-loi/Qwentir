@@ -1,0 +1,11 @@
+SURAT PERINTAH KIRIM BBM
+No. Order   : DO-010
+Tanggal     : 10/11/2026
+Klien       : PT Energi Niaga Utama
+Transportir : PT Nusantara Tangki Mandiri
+Produk      : PMX
+Volume muat : 24.000 liter
+Depot asal  : Depot BBM Muara Karang
+Tujuan      : SPBU 34.815.09 Cikupa
+Nopol       : B 9567 STU
+Sopir       : Bambang Prasetyo

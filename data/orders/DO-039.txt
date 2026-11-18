@@ -1,0 +1,11 @@
+SURAT PERINTAH KIRIM BBM
+No. Order   : DO-039
+Tanggal     : 05/11/2026
+Klien       : PT Energi Niaga Utama
+Transportir : PT Nusantara Tangki Mandiri
+Produk      : Biosolar
+Volume muat : 16.000 liter
+Depot asal  : Depot BBM Cikarang Barat
+Tujuan      : SPBU 34.310.12 Tanjung Duren
+Nopol       : D 8421 AB
+Sopir       : Agus Riyadi

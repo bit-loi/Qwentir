@@ -1,0 +1,8 @@
+From: logistik@eneraginiaga.example
+To: ops@nusantarata.ngki.example
+Subject: Kirim DO-013
+
+Pak, tolong kirim DO-013 ya.
+Produk PTL, muat 16.000 liter, dari Depot BBM Tanjung Sekong ke SPBU 34.123.01 Kebon Melati.
+Truk B 9123 XYZ (Suparman), tanggal 13/11/2026.
+Thanks.

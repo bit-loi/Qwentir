@@ -1,0 +1,11 @@
+SURAT PERINTAH KIRIM BBM
+No. Order   : DO-004
+Tanggal     : 04/11/2026
+Klien       : PT Energi Niaga Utama
+Transportir : PT Nusantara Tangki Mandiri
+Produk      : Dex
+Volume muat : 24.000 liter
+Depot asal  : Depot BBM Balonggede
+Tujuan      : SPBU 34.402.03 Pondok Gede
+Nopol       : B 9789 TUV
+Sopir       : Joko Susilo

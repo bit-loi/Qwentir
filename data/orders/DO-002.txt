@@ -1,0 +1,8 @@
+From: logistik@eneraginiaga.example
+To: ops@nusantarata.ngki.example
+Subject: Kirim DO-002
+
+Pak, tolong kirim DO-002 ya.
+Produk Pertamax, muat 8.000 liter, dari Depot BBM Muara Karang ke SPBU 34.205.07 Cibitung.
+Truk B 9456 KLM (Budi Santoso), tanggal 02/11/2026.
+Thanks.

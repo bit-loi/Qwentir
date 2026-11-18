@@ -1,0 +1,8 @@
+From: logistik@eneraginiaga.example
+To: ops@nusantarata.ngki.example
+Subject: Kirim DO-020
+
+Pak, tolong kirim DO-020 ya.
+Produk Dexlite, muat 8.000 liter, dari Depot BBM Balonggede ke PT Plastik Nusantara Jaya.
+Truk B 9345 NOP (Rahmat Hidayat), tanggal 03/11/2026.
+Thanks.

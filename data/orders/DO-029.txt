@@ -1,0 +1,11 @@
+SURAT PERINTAH KIRIM BBM
+No. Order   : DO-029
+Tanggal     : 12/11/2026
+Klien       : PT Energi Niaga Utama
+Transportir : PT Nusantara Tangki Mandiri
+Produk      : Pertalite
+Volume muat : 8.000 liter
+Depot asal  : Depot BBM Tanjung Sekong
+Tujuan      : PT Kimia Industri Raya
+Nopol       : F 8123 CD
+Sopir       : Hendra Wijaya

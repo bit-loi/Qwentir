@@ -1,0 +1,11 @@
+SURAT PERINTAH KIRIM BBM
+No. Order   : DO-047
+Tanggal     : 13/11/2026
+Klien       : PT Energi Niaga Utama
+Transportir : PT Nusantara Tangki Mandiri
+Produk      : Biosolar
+Volume muat : 8.000 liter
+Depot asal  : Depot BBM Cikarang Barat
+Tujuan      : Pabrik Gula Tanjung Sari
+Nopol       : D 8678 VWX
+Sopir       : Eko Saputra

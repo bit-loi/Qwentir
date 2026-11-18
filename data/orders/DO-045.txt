@@ -1,0 +1,11 @@
+SURAT PERINTAH KIRIM BBM
+No. Order   : DO-045
+Tanggal     : 12/11/2026
+Klien       : PT Energi Niaga Utama
+Transportir : PT Nusantara Tangki Mandiri
+Produk      : PTL
+Volume muat : 16.000 liter
+Depot asal  : Depot BBM Tanjung Sekong
+Tujuan      : SPBU 34.707.22 Serpong
+Nopol       : T 8234 QR
+Sopir       : Yusuf Maulana

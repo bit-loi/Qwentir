@@ -1,0 +1,8 @@
+From: logistik@eneraginiaga.example
+To: ops@nusantarata.ngki.example
+Subject: Kirim DO-011
+
+Pak, tolong kirim DO-011 ya.
+Produk Biosolar, muat 8.000 liter, dari Depot BBM Cikarang Barat ke Pabrik Gula Tanjung Sari.
+Truk D 8678 VWX (Eko Saputra), tanggal 11/11/2026.
+Thanks.

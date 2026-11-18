@@ -1,0 +1,11 @@
+SURAT PERINTAH KIRIM BBM
+No. Order   : DO-037
+Tanggal     : 03/11/2026
+Klien       : PT Energi Niaga Utama
+Transportir : PT Nusantara Tangki Mandiri
+Produk      : RON 90
+Volume muat : 16.000 liter
+Depot asal  : Depot BBM Tanjung Sekong
+Tujuan      : SPBU 34.123.01 Kebon Melati
+Nopol       : B 9123 XYZ
+Sopir       : Suparman

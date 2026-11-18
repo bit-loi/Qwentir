@@ -1,0 +1,8 @@
+From: logistik@eneraginiaga.example
+To: ops@nusantarata.ngki.example
+Subject: Kirim DO-040
+
+Pak, tolong kirim DO-040 ya.
+Produk Dex, muat 24.000 liter, dari Depot BBM Balonggede ke SPBU 34.402.03 Pondok Gede.
+Truk B 9789 TUV (Joko Susilo), tanggal 06/11/2026.
+Thanks.
