@@ -223,10 +223,14 @@ function drawCat(ctx, x, y, scale, tint) {
 
 /* ---- office tilemap, generated: octagonal room like Soul Knight lobby ----
    # wall, X void, . floor, D desk, C chair, P plant, K coffee, S sofa,
-   M rug, T table, R server rack */
-const MAP_W = 44;
-const MAP_H = 24;
-const DESK_X = [7, 21, 35]; // desk cluster centers (seat column)
+   M rug, T table, R server rack.
+   Ukuran map mengikuti aspek viewport biar ruangan selalu penuh layar
+   (fullscreen, tanpa letterbox). */
+let MAP_W = 44;
+let MAP_H = 24;
+let DESK_X = [7, 21, 35]; // desk cluster centers (seat column)
+let OFFICE_MAP = [];
+let WAYPOINTS = [];
 
 function buildMap() {
   const g = [];
@@ -256,30 +260,50 @@ function buildMap() {
   const rect = (x0, y0, x1, y1, ch) => {
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) set(x, y, ch);
   };
+  const mid = Math.floor(MAP_W / 2);
   for (const cx of DESK_X) {
     rect(cx - 2, 7, cx + 1, 8, 'D');   // 4x2 desk cluster
     set(cx, 6, 'C');                   // north seat (the working chair)
     set(cx, 9, 'C');                   // south chair
   }
-  rect(38, 4, 39, 5, 'K');             // coffee corner
-  rect(2, 10, 2, 12, 'R');             // server rack
-  rect(19, 14, 26, 15, 'T');           // meeting table
-  rect(4, 17, 11, 20, 'M');            // rug
-  rect(5, 18, 10, 19, 'S');            // sofa
-  set(7, 3, 'P'); set(36, 3, 'P'); set(7, 21, 'P'); set(36, 21, 'P');
+  rect(MAP_W - 6, 4, MAP_W - 5, 5, 'K');  // coffee corner
+  rect(2, 10, 2, 12, 'R');                // server rack
+  rect(mid - 4, 14, mid + 3, 15, 'T');    // meeting table
+  rect(4, MAP_H - 7, 11, MAP_H - 4, 'M'); // rug
+  rect(5, MAP_H - 6, 10, MAP_H - 5, 'S'); // sofa
+  set(7, 3, 'P'); set(MAP_W - 8, 3, 'P'); set(7, MAP_H - 3, 'P'); set(MAP_W - 8, MAP_H - 3, 'P');
   return g.map((r) => r.join(''));
 }
 
-const OFFICE_MAP = buildMap();
+function buildWaypoints() {
+  const mid = Math.floor(MAP_W / 2);
+  return [
+    [DESK_X[0], 10], [DESK_X[1], 10], [DESK_X[2], 10], [MAP_W - 4, 7],
+    [8, MAP_H - 4], [mid, 16], [12, 12], [MAP_W - 14, 12], [10, 5],
+    [mid + 5, 5], [MAP_W - 11, MAP_H - 6], [16, MAP_H - 3],
+  ];
+}
+
+/* sesuaikan ukuran ruangan dengan aspek layar; true bila map dibangun ulang */
+function configureOfficeMap(aspect) {
+  if (!Number.isFinite(aspect) || aspect <= 0) return false;
+  let w; let h;
+  if (aspect >= 44 / 24) { h = 24; w = Math.min(100, Math.max(44, Math.round(24 * aspect))); }
+  else { w = 44; h = Math.min(40, Math.max(24, Math.round(44 / aspect))); }
+  if (w === MAP_W && h === MAP_H) return false;
+  MAP_W = w;
+  MAP_H = h;
+  DESK_X = [Math.round(MAP_W * 0.16), Math.round(MAP_W * 0.48), Math.round(MAP_W * 0.8)];
+  OFFICE_MAP = buildMap();
+  WAYPOINTS = buildWaypoints();
+  return true;
+}
+
+OFFICE_MAP = buildMap();
+WAYPOINTS = buildWaypoints();
 
 const TILE = 16;
 const SCALE = 3;
-
-/* wander waypoints (tile coords, walkable floor) */
-const WAYPOINTS = [
-  [7, 10], [21, 10], [35, 10], [37, 7], [8, 20], [22, 16],
-  [12, 12], [30, 12], [10, 5], [26, 5], [33, 18], [16, 21],
-];
 
 function tileAt(tx, ty) {
   if (ty < 0 || ty >= MAP_H || tx < 0 || tx >= MAP_W) return '#';

@@ -15,3 +15,9 @@ Thumbs.db
 
 # Virtual Office uploads (files attached to Waker tasks)
 inbox/
+
+# Qoder IDE metadata (repowiki / knowledge cache)
+.qoder/
+
+# Virtual Office verification screenshots (browser artifacts, not repo content)
+output/screenshots/

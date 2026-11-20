@@ -71,11 +71,12 @@ npm run start:office       # or: node office/server.js  → http://localhost:878
 npm test                   # bridge test suite (node:test, zero credits consumed)
 ```
 
-- **Live office map** — pixel-art canvas; every Waker becomes an employee wandering between desk, coffee machine, and meeting table. While a session turn is running they sit at their desk typing with a "…" bubble and a glowing monitor.
-- **Click an employee → chat & assign tasks** — the drawer opens a real QoderWake session (`session create / send / events` through the local daemon CLI), bound to this repo as cwd so the Waker reads `data/`, `agents/`, and `output/` directly. Quick-task buttons per role seed typical Qwentir jobs (intake validation, reconciliation sweeps, invoice drafts).
+- **Full-screen office map** — the pixel-art room regenerates to match your viewport aspect (no letterbox): every Waker becomes an employee wandering between desk, coffee machine, and meeting table. While a session turn is running they sit at their desk typing with a "…" bubble and a glowing monitor.
+- **Pet-style interactions** — click an employee (or the office cat) and they jump with a heart/HI! emote, vscode-pet style; click the floor to throw a ball that the nearest idle worker runs to fetch. Double-click an employee (or the roster CHAT button) to open the chat drawer.
+- **Chat & assign tasks** — the drawer opens a real QoderWake session (`session create / send / events` through the local daemon CLI), bound to this repo as cwd so the Waker reads `data/`, `agents/`, and `output/` directly. Quick-task buttons per role seed typical Qwentir jobs (intake validation, reconciliation sweeps, invoice drafts).
 - **File attachments** — the `FILE+` button in the chat drawer uploads DO/POD files (or anything ≤ 20 MB) into `inbox/` (gitignored) and appends their repo paths to the task message, so the Waker opens them straight from disk.
 - **Roster & hiring** — the bottom strip maps Wakers to Qwentir roles (Intake / Reconciliation / Billing) by description keywords. An unfilled desk shows `VACANT`; **HIRE** creates a new Waker in your QoderWake (`waker create`) from the role persona under `agents/`.
-- **HUD** — daemon online/offline, running session count, repo path, plus Qwen & Alibaba Cloud marks (also painted as wall posters inside the office).
+- **HUD** — daemon online/offline, running session count, repo path, plus the Qwen & Alibaba Cloud marks.
 
 The bridge (`office/server.js`) is a zero-dependency Node HTTP server that proxies the local QoderWake daemon via the `qoderwake` CLI; the frontend (`office/public/`) is vanilla-JS canvas — no build step, no new npm dependencies. `office/test.js` covers static serving, path-traversal guard, roles payload, upload round-trip, and input validation without ever creating an agent session.
 
@@ -86,19 +87,24 @@ agents/     Identity, persona, and "bible" (operating rules) for each of the 3 a
 office/     Virtual Office UI — 8-bit office wired to the local QoderWake daemon
   server.js         Zero-dep bridge: static files + /api/* → qoderwake CLI
   roles.json        Qwentir role ↔ Waker mapping, quick tasks, hire package
-  public/           Canvas office sim (index.html, office.js, sprites.js, style.css)
+  test.js           Bridge test suite (npm test — node:test, zero credits)
+  public/           Canvas office sim (index.html, office.js, sprites.js, style.css, favicon.svg)
 data/       Seed data + contract terms used by the pipeline
   contracts.json    Tariff, 0.5% shrinkage tolerance, penalty rules, 3-day POD overdue limit
   orders/           Delivery-order text files
   pods/             Proof-of-delivery text files (driver WhatsApp / discharge notes)
   answer_key.csv    Ground truth for the dummy dataset — NOT read by the agents
 output/     Generated field documents (DO & POD, PDF/JPG) + admin recap + answer key
+  do/ pod/          Rendered delivery orders & proof-of-delivery documents
+  screenshots/      Virtual Office verification screenshots (gitignored working dir)
 scripts/    Deterministic dummy-data generator
   generate-dataset.js   One-command orchestrator (text + documents)
   lib/{rng,data,svg,render,textdata}.js
   inspect-pdf.mjs       Dev helper to rasterize generated PDFs (mupdf)
 assets/fonts/           Bundled handwriting/UI fonts (OFL: Caveat, Patrick Hand, Kalam, PT Sans)
 ```
+
+Gitignored working directories (never committed): `node_modules/`, `inbox/` (chat attachments), `output/screenshots/`, and `.qoder/` (IDE wiki cache).
 
 ## Dummy data generator
 

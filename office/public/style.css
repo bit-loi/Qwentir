@@ -97,30 +97,37 @@ body::after {
 
 #canvas-wrap {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  padding: 12px;
+  position: relative;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
+  background: #04050a;
 }
 
 #office {
-  /* ukuran display diatur fitCanvas() di office.js agar selalu sebesar mungkin */
+  /* fullscreen: mengisi seluruh stage; map menyesuaikan aspek via fitCanvas() */
+  display: block;
+  width: 100%;
+  height: 100%;
   image-rendering: pixelated;
-  border: 4px solid var(--line);
-  box-shadow: 0 0 0 4px #10122a, 8px 8px 0 4px #0a0c1c;
   cursor: pointer;
-  background: #101425;
+  background: #04050a;
 }
 
 #hint {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  background: rgba(6, 8, 20, 0.62);
+  border: 1px solid var(--line);
+  padding: 4px 12px;
   color: var(--dim);
-  font-size: 13px;
+  font-size: 12px;
   letter-spacing: 2px;
-  flex-shrink: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 5;
 }
 
 /* chat drawer */
@@ -315,4 +322,19 @@ button.task {
 }
 #modal-body h3 { margin: 0 0 10px; color: var(--green); letter-spacing: 2px; }
 #modal-body p { line-height: 1.6; }
+#modal-box input, #modal-box textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+  background: #10122a;
+  border: 2px solid var(--line);
+  padding: 8px 10px;
+  outline: none;
+  resize: vertical;
+}
+#modal-box input:focus, #modal-box textarea:focus { border-color: #59d9ff; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+
+.card-hire { border-style: dashed; border-color: var(--green); }
+.card-hire b { color: var(--green); }

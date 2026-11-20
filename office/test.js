@@ -117,6 +117,16 @@ test('api: upload menolak payload kosong', async () => {
   assert.strictEqual(j.ok, false);
 });
 
+test('api: hire custom tanpa name/description ditolak tanpa menyentuh daemon', async () => {
+  const j = await (await fetch(`${BASE}/api/hire`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  })).json();
+  assert.strictEqual(j.ok, false);
+  assert.match(j.error, /wajib/);
+});
+
 test('api: session create tanpa payload ditolak tanpa menyentuh daemon', async () => {
   const j = await (await fetch(`${BASE}/api/sessions`, {
     method: 'POST',

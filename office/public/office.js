@@ -6,23 +6,31 @@ const ctx = canvas.getContext('2d');
 const TS = TILE * SCALE; // tile size in canvas px
 canvas.width = MAP_W * TS;
 canvas.height = MAP_H * TS;
+let staticLayer = null;
 
-/* display size = sebesar mungkin muat di stage, rasio pixel tetap */
+/* fullscreen: ukuran map mengikuti aspek stage, canvas mengisi wrap 100%
+   tanpa letterbox; map dibangun ulang bila aspek berubah */
 function fitCanvas() {
   const wrap = document.getElementById('canvas-wrap');
-  const hint = document.getElementById('hint');
-  const availW = wrap.clientWidth - 24 - 8; // padding wrap + border canvas
-  const availH = wrap.clientHeight - 24 - 8 - hint.offsetHeight - 10;
-  const ratio = canvas.width / canvas.height;
-  let w = Math.min(availW, availH * ratio, 1600);
-  if (!Number.isFinite(w)) w = 320;
-  w = Math.max(w, 240); // lantai buat window super kecil
-  canvas.style.width = `${Math.floor(w)}px`;
-  canvas.style.height = `${Math.floor(w / ratio)}px`;
+  const aspect = wrap.clientWidth / Math.max(1, wrap.clientHeight);
+  if (configureOfficeMap(aspect)) {
+    canvas.width = MAP_W * TS;
+    canvas.height = MAP_H * TS;
+    staticLayer = null;
+    state.ball = null;
+    syncChars(); // posisi meja mengikuti lebar map baru
+    for (const ch of state.chars) {
+      ch.x = Math.min(ch.x, (MAP_W - 3) * TILE);
+      ch.y = Math.min(ch.y, (MAP_H - 3) * TILE);
+      ch.tx = Math.min(ch.tx, (MAP_W - 3) * TILE);
+      ch.ty = Math.min(ch.ty, (MAP_H - 3) * TILE);
+    }
+  }
+  canvas.style.width = '100%';
+  canvas.style.height = '100%';
 }
 window.addEventListener('resize', fitCanvas);
 window.addEventListener('load', fitCanvas);
-fitCanvas(); // ukuran awal sebelum data pertama tiba
 
 const state = {
   status: null,
@@ -32,6 +40,8 @@ const state = {
   chat: null,
   sessionStore: loadStore(),
   running: {},
+  ball: null,          // bola yang dilempar ke lantai {x,y,chaser}
+  catJumpUntil: 0,     // timestamp lompatan kucing
 };
 
 function loadStore() {
@@ -71,24 +81,55 @@ async function refresh() {
 
 function syncChars() {
   const next = [];
-  for (const role of state.roles) {
+  for (let i = 0; i < state.roles.length; i++) {
+    const role = state.roles[i];
     const waker = state.wakers.find((w) => w.roleId === role.id);
     const prev = state.chars.find((c) => c.roleId === role.id);
+    const desk = [DESK_X[i] !== undefined ? DESK_X[i] : role.desk[0], role.desk[1] || 6];
     next.push({
       roleId: role.id,
       roleTitle: role.title,
       palette: PALETTES[role.palette] || PALETTES.gray,
-      desk: role.desk,
+      desk,
       waker: waker || null,
       name: waker ? waker.name : null,
-      x: prev ? prev.x : role.desk[0] * TILE + 1,
-      y: prev ? prev.y : role.desk[1] * TILE - 2,
-      tx: prev ? prev.tx : role.desk[0] * TILE + 1,
-      ty: prev ? prev.ty : role.desk[1] * TILE - 2,
+      x: prev ? prev.x : desk[0] * TILE + 1,
+      y: prev ? prev.y : desk[1] * TILE - 2,
+      tx: prev ? prev.tx : desk[0] * TILE + 1,
+      ty: prev ? prev.ty : desk[1] * TILE - 2,
       flip: prev ? prev.flip : false,
       frame: 0,
       pauseUntil: prev ? prev.pauseUntil : 0,
       mode: prev ? prev.mode : 'wander',
+      jumpUntil: prev ? prev.jumpUntil : 0,
+      emote: prev ? prev.emote : '',
+      emoteUntil: prev ? prev.emoteUntil : 0,
+    });
+  }
+  // Waker yang belum cocok role mana pun: ikut jalan-jalan di kantor
+  for (const w of state.wakers) {
+    if (w.roleId) continue;
+    const prev = state.chars.find((c) => c.waker && c.waker.agentId === w.agentId);
+    const sx = Math.floor(MAP_W / 2) * TILE;
+    const sy = 4 * TILE;
+    next.push({
+      roleId: null,
+      roleTitle: 'New Hire',
+      palette: PALETTES.gray,
+      desk: null,
+      waker: w,
+      name: w.name,
+      x: prev ? prev.x : sx,
+      y: prev ? prev.y : sy,
+      tx: prev ? prev.tx : sx,
+      ty: prev ? prev.ty : sy,
+      flip: prev ? prev.flip : false,
+      frame: 0,
+      pauseUntil: prev ? prev.pauseUntil : 0,
+      mode: prev ? prev.mode : 'wander',
+      jumpUntil: prev ? prev.jumpUntil : 0,
+      emote: prev ? prev.emote : '',
+      emoteUntil: prev ? prev.emoteUntil : 0,
     });
   }
   state.chars = next;
@@ -100,7 +141,7 @@ function updateChars(now, dt) {
   for (const ch of state.chars) {
     if (!ch.waker || !ch.waker.online) { ch.mode = 'away'; continue; }
     ch.mode = state.running[ch.waker.agentId] ? 'work' : 'wander';
-    if (ch.mode === 'work') {
+    if (ch.mode === 'work' && ch.desk) {
       ch.tx = ch.desk[0] * TILE + 1;
       ch.ty = ch.desk[1] * TILE - 2;
     } else if (now > ch.pauseUntil) {
@@ -127,9 +168,36 @@ function updateChars(now, dt) {
   }
 }
 
-/* ---------------- Soul Knight style rendering ---------------- */
+/* vscode-pet style: bola di lantai dikejar karyawan terdekat yang santai */
+function updateBall(now) {
+  const b = state.ball;
+  if (!b) return;
+  let chaser = state.chars.find((c) => c.roleId === b.chaser && c.mode === 'wander');
+  if (!chaser) {
+    const idle = state.chars.filter((c) => c.waker && c.waker.online && c.mode === 'wander');
+    idle.sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y));
+    chaser = idle[0] || null;
+    b.chaser = chaser ? chaser.roleId : null;
+  }
+  if (!chaser) return;
+  chaser.tx = b.x;
+  chaser.ty = b.y + 2;
+  chaser.pauseUntil = 0;
+  if (Math.hypot(chaser.x - b.x, chaser.y - b.y) < 2) {
+    chaser.jumpUntil = now + 650;
+    chaser.emote = 'heart';
+    chaser.emoteUntil = now + 1400;
+    state.ball = null;
+  }
+}
 
-let staticLayer = null;
+function petChar(ch, now) {
+  ch.jumpUntil = now + 650;
+  ch.emote = ['heart', 'hi', '!'][Math.floor(Math.random() * 3)];
+  ch.emoteUntil = now + 1400;
+}
+
+/* ---------------- Soul Knight style rendering ---------------- */
 
 function buildStaticLayer() {
   staticLayer = document.createElement('canvas');
@@ -144,8 +212,6 @@ function buildStaticLayer() {
     }
   }
   drawDoor(g);
-  drawNeonSign(g);
-  drawPosters(g);
 }
 
 function drawTile(g, t, tx, ty) {
@@ -236,7 +302,7 @@ function drawTile(g, t, tx, ty) {
 
 function drawDoor(g) {
   const S = SCALE;
-  const x = 20 * TS;
+  const x = (Math.floor(MAP_W / 2) - 2) * TS;
   const y = 1 * TS - 4 * S;
   g.fillStyle = '#232a3d';
   g.fillRect(x - 2 * S, y - 2 * S, 4 * TS + 4 * S, 2 * TS + 6 * S);
@@ -250,58 +316,26 @@ function drawDoor(g) {
   g.fillRect(x + 4 * S, y + 2 * TS - 2 * S, 3 * S, 6 * S);
 }
 
-function drawNeonSign(g) {
-  const S = SCALE;
-  const x = 3 * TS;
-  const y = 1 * TS - 2 * S;
-  g.save();
-  g.shadowColor = '#28e0ff';
-  g.shadowBlur = 14 * S;
-  g.fillStyle = '#0a2530';
-  g.fillRect(x - 4 * S, y - 4 * S, pixelTextWidth('QWENTIR', 3 * S / S) * S + 8 * S, 5 * 3 * S + 12 * S);
-  drawPixelText(g, 'QWENTIR', x, y, 3 * S, '#5ff0ff');
-  g.fillStyle = '#5ff0ff';
-  g.fillRect(x - 2 * S, y + 5 * 3 * S + 2 * S, pixelTextWidth('QWENTIR', 3 * S) + 4 * S, 2 * S);
-  g.fillRect(x + 6 * S, y + 5 * 3 * S + 5 * S, pixelTextWidth('QWENTIR', 3 * S) - 8 * S, 1 * S);
-  g.restore();
-  drawPixelText(g, 'BACK OFFICE', x + 2 * S, y + 5 * 3 * S + 8 * S, S, '#2a7f95');
-}
 
-function drawPosters(g) {
+/* bubble reaksi ala vscode-pet: heart / hi / ! */
+function drawEmote(g, x, y, type, now) {
   const S = SCALE;
-  // Qwen poster
-  let x = 27 * TS;
-  let y = 1 * TS - 3 * S;
-  g.fillStyle = '#20263a';
-  g.fillRect(x - 2 * S, y - 2 * S, 12 * S + 4 * S, 16 * S + 4 * S);
-  g.fillStyle = '#615CED';
-  g.fillRect(x, y, 12 * S, 16 * S);
-  g.fillStyle = '#7b78f2';
-  g.fillRect(x + 1 * S, y + 1 * S, 10 * S, 6 * S);
-  // pixel Q ring
+  y += Math.floor(now / 300) % 2 ? -S : 0;
   g.fillStyle = '#ffffff';
-  g.fillRect(x + 3 * S, y + 3 * S, 6 * S, 1 * S);
-  g.fillRect(x + 2 * S, y + 4 * S, 1 * S, 4 * S);
-  g.fillRect(x + 9 * S, y + 4 * S, 1 * S, 4 * S);
-  g.fillRect(x + 3 * S, y + 8 * S, 4 * S, 1 * S);
-  g.fillRect(x + 8 * S, y + 7 * S, 2 * S, 2 * S);
-  drawPixelText(g, 'QWEN', x + 1 * S, y + 11 * S, S, '#ffffff');
-  // Alibaba Cloud poster
-  x = 31 * TS;
-  g.fillStyle = '#20263a';
-  g.fillRect(x - 2 * S, y - 2 * S, 14 * S + 4 * S, 16 * S + 4 * S);
-  g.fillStyle = '#12141c';
-  g.fillRect(x, y, 14 * S, 16 * S);
-  g.fillStyle = '#FF6A00';
-  // bracket mark [ ]
-  g.fillRect(x + 2 * S, y + 3 * S, 3 * S, 1 * S);
-  g.fillRect(x + 2 * S, y + 4 * S, 1 * S, 4 * S);
-  g.fillRect(x + 2 * S, y + 8 * S, 3 * S, 1 * S);
-  g.fillRect(x + 9 * S, y + 3 * S, 3 * S, 1 * S);
-  g.fillRect(x + 11 * S, y + 4 * S, 1 * S, 4 * S);
-  g.fillRect(x + 9 * S, y + 8 * S, 3 * S, 1 * S);
-  drawPixelText(g, 'ALIBABA', x + 1 * S, y + 11 * S, S, '#FF6A00');
-  drawPixelText(g, 'CLOUD', x + 3 * S, y + 13 * S, S, '#c9ccd6');
+  g.fillRect(x - 5 * S, y - 6 * S, 10 * S, 8 * S);
+  g.fillRect(x - S, y + 2 * S, 2 * S, 2 * S);
+  if (type === 'heart') {
+    g.fillStyle = '#e0483e';
+    g.fillRect(x - 3 * S, y - 4 * S, 2 * S, 2 * S);
+    g.fillRect(x + S, y - 4 * S, 2 * S, 2 * S);
+    g.fillRect(x - 4 * S, y - 3 * S, 8 * S, 2 * S);
+    g.fillRect(x - 3 * S, y - S, 6 * S, S);
+    g.fillRect(x - 2 * S, y, 4 * S, S);
+    g.fillRect(x - S, y + S, 2 * S, S);
+  } else {
+    const label = type === 'hi' ? 'HI!' : '!';
+    drawPixelText(g, label, x - pixelTextWidth(label, 2 * S) / 2, y - 4 * S, 2 * S, '#20202a');
+  }
 }
 
 function drawDeskProps(g, cx, working, now) {
@@ -372,18 +406,46 @@ function draw(now) {
     const role = state.roles[i];
     drawDeskProps(ctx, cxr, role ? !!workingByRole[role.id] : false, now);
   });
-  drawCat(ctx, (DESK_X[0] + 1) * TS + 2 * SCALE, 8 * TS + 8 * SCALE, SCALE, '#8a8a99');
-  if (Math.floor(now / 900) % 2 === 0) {
+  let catJump = 0;
+  if (now < state.catJumpUntil) {
+    const t = 1 - (state.catJumpUntil - now) / 650;
+    catJump = Math.sin(Math.PI * t) * 6 * SCALE;
+  }
+  const catX = (DESK_X[0] + 1) * TS + 2 * SCALE;
+  const catY = 8 * TS + 8 * SCALE;
+  drawCat(ctx, catX, catY - catJump, SCALE, '#8a8a99');
+  if (Math.floor(now / 900) % 2 === 0 && !catJump) {
     ctx.fillStyle = '#8a8a99';
-    ctx.fillRect((DESK_X[0] + 1) * TS + 12 * SCALE, 8 * TS + 10 * SCALE, 2 * SCALE, SCALE);
+    ctx.fillRect(catX + 10 * SCALE, catY + 2 * SCALE, 2 * SCALE, SCALE);
+  }
+  if (catJump) drawEmote(ctx, catX + 5 * SCALE, catY - 8 * SCALE, 'heart', now);
+
+  // ball on the floor (vscode-pet style throw)
+  if (state.ball) {
+    const bx = state.ball.x * SCALE;
+    const by = state.ball.y * SCALE;
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(bx, by + 3 * SCALE, 4 * SCALE, 1.5 * SCALE, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#e0483e';
+    ctx.fillRect(bx - 3 * SCALE, by - 3 * SCALE, 6 * SCALE, 6 * SCALE);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(bx - 3 * SCALE, by - SCALE, 6 * SCALE, 2 * SCALE);
+    ctx.fillRect(bx - SCALE, by - 3 * SCALE, 2 * SCALE, 2 * SCALE);
   }
 
   // characters, depth-sorted
   const chars = [...state.chars].sort((a, b) => a.y - b.y);
   for (const ch of chars) {
     if (ch.mode === 'away') continue;
+    let jump = 0;
+    if (ch.jumpUntil && now < ch.jumpUntil) {
+      const t = 1 - (ch.jumpUntil - now) / 650;
+      jump = Math.sin(Math.PI * t) * 7 * SCALE;
+    }
     const px = Math.round(ch.x) * SCALE;
-    const py = Math.round(ch.y) * SCALE + (ch.frame && ch.mode === 'wander' ? -SCALE : 0);
+    const py = Math.round(ch.y) * SCALE + (ch.frame && ch.mode === 'wander' ? -SCALE : 0) - jump;
     // shadow
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.beginPath();
@@ -409,6 +471,8 @@ function draw(now) {
       ctx.fillStyle = '#20202a';
       for (let d = 0; d < dots; d++) ctx.fillRect(bx + 3 * SCALE + d * 4 * SCALE, by + 3 * SCALE, 2 * SCALE, 2 * SCALE);
     }
+    // reaction emote (pet / ball catch)
+    if (ch.emoteUntil && now < ch.emoteUntil) drawEmote(ctx, px + 8 * SCALE, py - 18 * SCALE, ch.emote, now);
   }
 
   // vacant desks
@@ -437,6 +501,7 @@ function loop(ts) {
   const dt = Math.min(0.05, (ts - lastTs) / 1000 || 0);
   lastTs = ts;
   updateChars(ts, dt);
+  updateBall(ts);
   draw(ts);
   requestAnimationFrame(loop);
 }
@@ -481,6 +546,18 @@ function renderRoster() {
     }
     el.append(card);
   }
+  // kartu "hire another agent": buat Waker baru bebas untuk company ini
+  const add = document.createElement('div');
+  add.className = 'card card-hire';
+  const addInfo = document.createElement('div');
+  addInfo.className = 'card-info';
+  addInfo.innerHTML = '<b>+ NEW</b><span>Hire another agent</span><small>buat Waker baru untuk company ini</small>';
+  const addBtn = document.createElement('button');
+  addBtn.className = 'hire';
+  addBtn.textContent = 'HIRE';
+  addBtn.onclick = openHireCustom;
+  add.append(addInfo, addBtn);
+  el.append(add);
 }
 
 function escapeHtml(s) {
@@ -741,27 +818,92 @@ function openHire(role) {
   };
 }
 
+/* hire bebas dari footer: buat Waker baru untuk company ini */
+function openHireCustom() {
+  const modal = document.getElementById('modal');
+  modal.classList.add('open');
+  document.getElementById('modal-body').innerHTML = `
+    <h3>HIRE ANOTHER AGENT</h3>
+    <p class="dim">Membuat Waker baru di QoderWake untuk company ini. Kalau deskripsinya
+    cocok kata kunci role Qwentir (intake / reconciliation / billing), dia otomatis
+    duduk di meja role itu; kalau tidak, dia bergabung sebagai agen bebas di kantor.</p>
+    <p><input id="hire-name" maxlength="60" placeholder="Nama (mis. Sari)" /></p>
+    <p><textarea id="hire-desc" rows="3" maxlength="300"
+      placeholder="Deskripsi pekerjaan, mis. memeriksa dokumen DO dan POD, merekap volume bongkar muat..."></textarea></p>
+    <div class="modal-actions">
+      <button id="modal-cancel">BATAL</button>
+      <button id="modal-ok" class="hire">HIRE SEKARANG</button>
+    </div>`;
+  document.getElementById('modal-cancel').onclick = () => modal.classList.remove('open');
+  document.getElementById('modal-ok').onclick = async () => {
+    const name = document.getElementById('hire-name').value.trim();
+    const description = document.getElementById('hire-desc').value.trim();
+    if (!name || !description) { alert('Nama dan deskripsi wajib diisi dulu'); return; }
+    const btn = document.getElementById('modal-ok');
+    btn.disabled = true;
+    btn.textContent = 'HIRING...';
+    const r = await api('/api/hire', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, description }),
+    });
+    modal.classList.remove('open');
+    if (!r.ok) alert(`Hire gagal: ${r.error}`);
+    await refresh();
+  };
+}
+
 /* ---------------- wiring ---------------- */
 
-canvas.addEventListener('click', (e) => {
+function canvasPoint(e) {
   const rect = canvas.getBoundingClientRect();
-  const px = (e.clientX - rect.left) * (canvas.width / rect.width);
-  const py = (e.clientY - rect.top) * (canvas.height / rect.height);
+  return {
+    px: (e.clientX - rect.left) * (canvas.width / rect.width),
+    py: (e.clientY - rect.top) * (canvas.height / rect.height),
+  };
+}
+
+function charAt(px, py) {
   for (const ch of state.chars) {
+    if (!ch.waker) continue;
     const cx = ch.x * SCALE;
     const cy = ch.y * SCALE;
-    const hit = !ch.waker
-      ? (Math.abs(px - (ch.desk[0] * TS + 8 * SCALE)) < 3 * TS && Math.abs(py - (ch.desk[1] * TS + 8 * SCALE)) < 2 * TS)
-      : (px > cx - 2 * SCALE && px < cx + 18 * SCALE && py > cy - 4 * SCALE && py < cy + 20 * SCALE);
-    if (hit) {
-      if (ch.waker) openChat(ch.waker);
-      else {
-        const role = state.roles.find((r) => r.id === ch.roleId);
-        if (role && role.hire) openHire(role);
-      }
+    if (px > cx - 2 * SCALE && px < cx + 18 * SCALE && py > cy - 4 * SCALE && py < cy + 20 * SCALE) return ch;
+  }
+  return null;
+}
+
+/* klik = sapa/elus (reaksi lompat + emote ala vscode-pet);
+   klik 2x = buka chat; klik lantai = lempar bola; meja vacant = hire */
+canvas.addEventListener('click', (e) => {
+  const { px, py } = canvasPoint(e);
+  const now = performance.now();
+  const ch = charAt(px, py);
+  if (ch) { petChar(ch, now); return; }
+  const catX = (DESK_X[0] + 1) * TS + 2 * SCALE;
+  const catY = 8 * TS + 8 * SCALE;
+  if (px > catX - 2 * SCALE && px < catX + 12 * SCALE && py > catY - 4 * SCALE && py < catY + 7 * SCALE) {
+    state.catJumpUntil = now + 650;
+    return;
+  }
+  for (const c of state.chars) {
+    if (c.waker) continue;
+    if (Math.abs(px - (c.desk[0] * TS + 8 * SCALE)) < 3 * TS
+      && Math.abs(py - (c.desk[1] * TS + 8 * SCALE)) < 2 * TS) {
+      const role = state.roles.find((r) => r.id === c.roleId);
+      if (role && role.hire) openHire(role);
       return;
     }
   }
+  const tx = Math.floor(px / TS);
+  const ty = Math.floor(py / TS);
+  if (isWalkable(tx, ty)) state.ball = { x: tx * TILE + 8, y: ty * TILE + 8, chaser: null };
+});
+
+canvas.addEventListener('dblclick', (e) => {
+  const { px, py } = canvasPoint(e);
+  const ch = charAt(px, py);
+  if (ch) openChat(ch.waker);
 });
 
 document.getElementById('chat-close').onclick = closeChat;
@@ -789,4 +931,5 @@ document.getElementById('chat-stop').onclick = async () => {
 setInterval(() => { if (state.chat && state.chat.sessionId) pollEvents(); }, 2000);
 setInterval(refresh, 6000);
 
+fitCanvas(); // ukuran fullscreen sebelum data pertama tiba
 refresh().then(() => { fitCanvas(); requestAnimationFrame(loop); });

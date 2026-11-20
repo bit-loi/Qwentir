@@ -195,12 +195,22 @@ route('GET', /^\/api\/wakers$/, async () => {
 
 route('POST', /^\/api\/hire$/, async (ctx) => {
   const body = await readBody(ctx.req);
+  let name;
+  let description;
   const role = ROLES.find((x) => x.id === body.roleId);
-  if (!role || !role.hire) return { ok: false, error: 'role tidak punya paket hire' };
+  if (role && role.hire) {
+    name = role.hire.name;
+    description = role.hire.description;
+  } else {
+    // hire bebas: "hire another agent" dari footer roster
+    name = String(body.name || '').trim().slice(0, 60);
+    description = String(body.description || '').trim().slice(0, 300);
+    if (!name || !description) return { ok: false, error: 'name & description wajib diisi' };
+  }
   const r = await qw([
     'waker', 'create',
-    '--name', role.hire.name,
-    '--description', role.hire.description,
+    '--name', name,
+    '--description', description,
     '--json',
   ], 60000);
   const created = normalizeWakerId(r.data);
