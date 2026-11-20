@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Qwentir Virtual Office</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header id="hud">
+    <div class="hud-title">QWENTIR<span>VIRTUAL OFFICE</span></div>
+    <div class="hud-chips">
+      <span id="hud-daemon" class="chip">DAEMON: ?</span>
+      <span id="hud-running" class="chip">RUNNING: 0</span>
+      <span id="hud-repo" class="chip chip-dim"></span>
+      <span class="chip chip-logo"><img id="logo-qwen" src="https://github.com/QwenLM.png" alt="Qwen" onerror="this.style.display='none'" /><span>QWEN</span></span>
+      <span class="chip chip-logo"><img id="logo-ali" src="https://commons.wikimedia.org/wiki/Special:FilePath/Alibaba_Cloud_Logo.png" alt="Alibaba Cloud" onerror="this.style.display='none'" /><span>ALIBABA CLOUD</span></span>
+    </div>
+  </header>
+
+  <main id="stage">
+    <div id="canvas-wrap">
+      <canvas id="office"></canvas>
+      <div id="hint">KLIK KARYAWAN UNTUK CHAT &amp; ASSIGN TASK — KLIK MEJA VACANT UNTUK HIRE</div>
+    </div>
+
+    <aside id="drawer">
+      <div class="drawer-head">
+        <div>
+          <div id="chat-title">—</div>
+          <div id="chat-sub" class="dim">—</div>
+        </div>
+        <div class="drawer-head-actions">
+          <span id="chat-status" class="chip">STANDBY</span>
+          <button id="chat-stop" title="stop session turn">STOP</button>
+          <button id="chat-close" title="tutup">X</button>
+        </div>
+      </div>
+      <div id="chat-tasks"></div>
+      <div id="chat-files"></div>
+      <div id="chat-log"></div>
+      <div class="drawer-input">
+        <button id="chat-attach" title="lampirkan file DO/POD ke tugas">FILE+</button>
+        <input id="chat-file" type="file" multiple hidden />
+        <input id="chat-input" placeholder="Tulis tugas atau pertanyaan..." autocomplete="off" />
+        <button id="chat-send">KIRIM</button>
+      </div>
+    </aside>
+  </main>
+
+  <footer id="roster"></footer>
+
+  <div id="modal">
+    <div id="modal-box">
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <script src="/sprites.js"></script>
+  <script src="/office.js"></script>
+</body>
+</html>

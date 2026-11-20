@@ -64,17 +64,29 @@ Loaded 10,000 L   |   Discharged 9,900 L
 
 ## Virtual Office UI
 
-A single dashboard where the founder stays in control:
+An 8-bit office — styled after Soul Knight / ChillyRoom pixel rooms (dark surround, spotlight pool, vignette, chibi big-head sprites, chunky desks with glowing monitors, neon signage, office cat) — where the founder watches — and talks to — their real QoderWake Wakers. Run it locally:
 
-- **Agent status cards** — each agent shows `idle` / `working` / `done`.
-- **Order queue** — every shipment and its current stage.
-- **Approve** — release an invoice (human sign-off before money moves).
-- **Pause** / **Stop** — freeze or halt an agent at any time.
+```bash
+npm run start:office       # or: node office/server.js  → http://localhost:8787
+npm test                   # bridge test suite (node:test, zero credits consumed)
+```
+
+- **Live office map** — pixel-art canvas; every Waker becomes an employee wandering between desk, coffee machine, and meeting table. While a session turn is running they sit at their desk typing with a "…" bubble and a glowing monitor.
+- **Click an employee → chat & assign tasks** — the drawer opens a real QoderWake session (`session create / send / events` through the local daemon CLI), bound to this repo as cwd so the Waker reads `data/`, `agents/`, and `output/` directly. Quick-task buttons per role seed typical Qwentir jobs (intake validation, reconciliation sweeps, invoice drafts).
+- **File attachments** — the `FILE+` button in the chat drawer uploads DO/POD files (or anything ≤ 20 MB) into `inbox/` (gitignored) and appends their repo paths to the task message, so the Waker opens them straight from disk.
+- **Roster & hiring** — the bottom strip maps Wakers to Qwentir roles (Intake / Reconciliation / Billing) by description keywords. An unfilled desk shows `VACANT`; **HIRE** creates a new Waker in your QoderWake (`waker create`) from the role persona under `agents/`.
+- **HUD** — daemon online/offline, running session count, repo path, plus Qwen & Alibaba Cloud marks (also painted as wall posters inside the office).
+
+The bridge (`office/server.js`) is a zero-dependency Node HTTP server that proxies the local QoderWake daemon via the `qoderwake` CLI; the frontend (`office/public/`) is vanilla-JS canvas — no build step, no new npm dependencies. `office/test.js` covers static serving, path-traversal guard, roles payload, upload round-trip, and input validation without ever creating an agent session.
 
 ## Repository layout
 
 ```
 agents/     Identity, persona, and "bible" (operating rules) for each of the 3 agents
+office/     Virtual Office UI — 8-bit office wired to the local QoderWake daemon
+  server.js         Zero-dep bridge: static files + /api/* → qoderwake CLI
+  roles.json        Qwentir role ↔ Waker mapping, quick tasks, hire package
+  public/           Canvas office sim (index.html, office.js, sprites.js, style.css)
 data/       Seed data + contract terms used by the pipeline
   contracts.json    Tariff, 0.5% shrinkage tolerance, penalty rules, 3-day POD overdue limit
   orders/           Delivery-order text files
@@ -112,7 +124,7 @@ The run is fully reproducible: a fixed seed (`20261118`) guarantees byte-identic
 - [ ] Intake Agent — end-to-end
 - [ ] Reconciliation Agent
 - [ ] Billing Agent — 3 agents auto-handoff
-- [ ] Virtual Office UI (status, approve, pause, stop)
+- [x] Virtual Office UI (8-bit office, chat & task assignment via QoderWake daemon)
 - [ ] Large-batch test (real output, credits consumed)
 - [ ] Demo video (≤ 5 min)
 

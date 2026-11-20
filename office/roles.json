@@ -1,0 +1,50 @@
+{
+  "roles": [
+    {
+      "id": "intake",
+      "title": "Intake Officer",
+      "blurb": "Membaca order & POD jadi data terstruktur, cek kelengkapan & duplikat.",
+      "matchKeywords": ["intake", "order", "pod", "lengkap", "duplikat"],
+      "palette": "blue",
+      "desk": [7, 6],
+      "persona": ["agents/intake-bible.md", "agents/intake-identity.md", "agents/intake-persona.md"],
+      "tasks": [
+        "Proses batch order di data/orders + data/pods: mana yang incomplete atau duplikat? Beri alasannya.",
+        "Validasi DO-007_copy dan DO-019_copy: duplikat atau bukan? Jangan guess dari POD.",
+        "Field wajib apa saja yang kosong di order yang incomplete periode ini?"
+      ]
+    },
+    {
+      "id": "reconciliation",
+      "title": "Reconciliation Analyst",
+      "blurb": "Mencocokkan DO dengan POD, menghitung selisih volume vs toleransi kontrak.",
+      "matchKeywords": ["reconcil", "cocok", "selisih", "toleransi", "rekonsil"],
+      "palette": "green",
+      "desk": [21, 6],
+      "persona": ["agents/reconciliation-bible.md", "agents/reconciliation-identity.md", "agents/reconciliation-persona.md"],
+      "tasks": [
+        "Rekonsiliasi DO vs POD vs output/rekap_admin.csv: daftar selisih di atas toleransi 0.5%.",
+        "Cek POD-901 dan POD-902: orphan atau punya pasangan DO? Tunjukkan buktinya.",
+        "Typo unit/nopol/nomor DO apa saja yang muncul di rekap admin?"
+      ]
+    },
+    {
+      "id": "billing",
+      "title": "Billing Officer",
+      "blurb": "Menghitung tagihan dari hasil rekonsiliasi: tarif kontrak, denda POD terlambat, penyesuaian selisih.",
+      "matchKeywords": ["billing", "invoice", "tagihan", "denda"],
+      "palette": "red",
+      "desk": [35, 6],
+      "persona": ["agents/billing-bible.md", "agents/billing-identity.md", "agents/billing-persona.md"],
+      "hire": {
+        "name": "Sari",
+        "description": "Menghitung tagihan transportasi BBM dari hasil rekonsiliasi: tarif kontrak di data/contracts.json, denda POD terlambat >3 hari, dan penyesuaian selisih volume di atas toleransi."
+      },
+      "tasks": [
+        "Buat draf invoice periode ini sesuai tarif di data/contracts.json; pakai volume hasil rekonsiliasi.",
+        "Hitung denda keterlambatan POD >3 hari untuk order yang relevan.",
+        "Order mana yang tidak boleh ditagih dulu karena status incomplete/orphan?"
+      ]
+    }
+  ]
+}
