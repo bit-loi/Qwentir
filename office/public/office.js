@@ -809,7 +809,6 @@ function openChat(waker) {
   document.getElementById('chat-title').textContent = `${waker.name} — ${state.chat.role ? state.chat.role.title : 'Waker'}`;
   document.getElementById('chat-sub').textContent = state.chat.sessionId
     ? `session ${state.chat.sessionId}` : 'belum ada session — pesan pertama akan membangunkan Waker';
-  renderTasks();
   renderAttach();
   renderChat();
   pollEvents();
@@ -818,20 +817,6 @@ function openChat(waker) {
 function closeChat() {
   state.chat = null;
   drawer.classList.remove('open');
-}
-
-function renderTasks() {
-  const box = document.getElementById('chat-tasks');
-  box.innerHTML = '';
-  const role = state.chat && state.chat.role;
-  if (!role) return;
-  for (const t of role.tasks || []) {
-    const b = document.createElement('button');
-    b.className = 'task';
-    b.textContent = t;
-    b.onclick = () => sendChat(t);
-    box.append(b);
-  }
 }
 
 function renderAttach() {
@@ -982,7 +967,12 @@ async function sendChat(message) {
       const r = await api('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ wakerId: chat.wakerId, message: full }),
+        body: JSON.stringify({
+          wakerId: chat.wakerId,
+          message: full,
+          persona: chat.role ? chat.role.persona : [],
+          roleTitle: chat.role ? chat.role.title : null,
+        }),
       });
       if (!r.ok) throw new Error(r.error || 'session create gagal');
       chat.sessionId = r.session.sessionId;
@@ -1020,7 +1010,7 @@ function openHire(role) {
   document.getElementById('modal-body').innerHTML = `
     <h3>HIRE: ${escapeHtml(role.hire.name)} — ${escapeHtml(role.title)}</h3>
     <p>${escapeHtml(role.hire.description)}</p>
-    <p class="dim">Persona dibaca dari repo ini saat bekerja: ${role.persona.map(escapeHtml).join(', ')}</p>
+    <p class="dim">Persona (bible / identity / persona): ${role.persona.map(escapeHtml).join(', ')} — otomatis dibacakan pada pesan session pertama.</p>
     <p class="dim">Membuat Waker baru di QoderWake akun kamu (qoderwake waker create).</p>
     <div class="modal-actions">
       <button id="modal-cancel">BATAL</button>
@@ -1051,6 +1041,10 @@ function openHireCustom() {
     <p class="dim">Membuat Waker baru di QoderWake untuk company ini. Kalau deskripsinya
     cocok kata kunci role Qwentir (intake / reconciliation / billing), dia otomatis
     duduk di meja role itu; kalau tidak, dia bergabung sebagai agen bebas di kantor.</p>
+    <p class="dim">File personality / bible / identity tidak diisi di sini: persona hidup
+    di folder agents/ dan terikat ke role lewat office/roles.json. Kalau deskripsi Waker
+    baru cocok kata kunci sebuah role, persona role itu otomatis dibacakan saat session
+    pertamanya; agen bebas bekerja tanpa persona.</p>
     <p><input id="hire-name" maxlength="60" placeholder="Nama (mis. Sari)" /></p>
     <p><textarea id="hire-desc" rows="3" maxlength="300"
       placeholder="Deskripsi pekerjaan, mis. memeriksa dokumen DO dan POD, merekap volume bongkar muat..."></textarea></p>

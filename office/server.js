@@ -246,11 +246,20 @@ route('POST', /^\/api\/upload$/, async (ctx) => {
 route('POST', /^\/api\/sessions$/, async (ctx) => {
   const body = await readBody(ctx.req);
   if (!body.wakerId || !body.message) return { ok: false, error: 'wakerId & message wajib' };
+  // persona role (agents/*-bible/identity/persona.md) dibacakan otomatis sekali
+  // saat session pertama supaya Waker bekerja sesuai bible & identity-nya
+  let message = String(body.message);
+  const persona = Array.isArray(body.persona) ? body.persona.map(String).filter(Boolean) : [];
+  if (persona.length) {
+    message = `Kamu adalah ${String(body.roleTitle || 'agen Qwentir')} di Qwentir Virtual Office. `
+      + `Sebelum mengerjakan tugas, baca dulu file persona kamu di repo ini: ${persona.join(', ')}. `
+      + `Patuhi isi file-file tersebut selama bekerja.\n\nTugas dari kantor:\n${message}`;
+  }
   const r = await qw([
     'session', 'create',
     '--waker-id', String(body.wakerId),
     '--title', String(body.title || 'Virtual Office task'),
-    '--message', String(body.message),
+    '--message', message,
     '--cwd', ROOT,
     '--json',
   ], 120000);

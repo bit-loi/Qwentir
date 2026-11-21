@@ -55,14 +55,13 @@ test('static: path traversal di luar public ditolak', async () => {
   assert.ok([403, 404].includes(r.status), `status tak terduga: ${r.status}`);
 });
 
-test('api: roles memuat 3 peran Qwentir lengkap dengan tasks', async () => {
+test('api: roles memuat 3 peran Qwentir', async () => {
   const r = await fetch(`${BASE}/api/roles`);
   const j = await r.json();
   assert.strictEqual(j.roles.length, 3);
   const ids = j.roles.map((x) => x.id).sort();
   assert.deepStrictEqual(ids, ['billing', 'intake', 'reconciliation']);
   for (const role of j.roles) {
-    assert.ok(Array.isArray(role.tasks) && role.tasks.length >= 2, `tasks ${role.id}`);
     assert.ok(Array.isArray(role.desk) && role.desk.length === 2, `desk ${role.id}`);
   }
   const billing = j.roles.find((x) => x.id === 'billing');
