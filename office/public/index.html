@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Qwentir Virtual Office</title>
+  <title>Qwentir Logistics Hub</title>
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <header id="hud">
-    <div class="hud-title">QWENTIR<span>VIRTUAL OFFICE</span></div>
+    <div class="hud-title">QWENTIR<span>LOGISTICS HUB</span></div>
     <div class="hud-chips">
       <span id="hud-daemon" class="chip">DAEMON: ?</span>
       <span id="hud-running" class="chip">RUNNING: 0</span>
@@ -22,7 +22,7 @@
   <main id="stage">
     <div id="canvas-wrap">
       <canvas id="office"></canvas>
-      <div id="hint">KLIK KARYAWAN = SAPA — KLIK LANTAI = LEMPAR BOLA — KLIK 2× = CHAT &amp; TASK — MEJA VACANT = HIRE</div>
+      <div id="hint">KLIK PEKERJA = SAPA — KLIK LANTAI = TARUH KARDUS — KLIK 2× = CHAT &amp; TASK — MEJA VACANT = HIRE</div>
     </div>
 
     <aside id="drawer">
@@ -43,7 +43,7 @@
       <div class="drawer-input">
         <button id="chat-attach" title="lampirkan file DO/POD ke tugas">FILE+</button>
         <input id="chat-file" type="file" multiple hidden />
-        <input id="chat-input" placeholder="Tulis tugas atau pertanyaan..." autocomplete="off" />
+        <input id="chat-input" placeholder="Tulis tugas gudang atau pertanyaan..." autocomplete="off" />
         <button id="chat-send">KIRIM</button>
       </div>
     </aside>

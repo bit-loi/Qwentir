@@ -221,10 +221,12 @@ function drawCat(ctx, x, y, scale, tint) {
   }
 }
 
-/* ---- office tilemap, generated: octagonal room like Soul Knight lobby ----
-   # wall, X void, . floor, D desk, C chair, P plant, K coffee, S sofa,
-   M rug, T table, R server rack.
-   Ukuran map mengikuti aspek viewport biar ruangan selalu penuh layar
+/* ---- gudang logistik tilemap, generated: lantai warehouse penuh layar ----
+   # dinding metal bergelombang, X void, . lantai beton, H lorong garis hazard,
+   D meja packing/workstation baja, C bangku, R rak palet berisi kardus,
+   B tumpukan kargo di atas palet, F forklift, T konveyor belt,
+   S kontainer pengiriman. Dock muat (truk) digambar terpisah di atas.
+   Ukuran map mengikuti aspek viewport biar gudang selalu penuh layar
    (fullscreen, tanpa letterbox). */
 let MAP_W = 44;
 let MAP_H = 24;
@@ -261,26 +263,47 @@ function buildMap() {
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) set(x, y, ch);
   };
   const mid = Math.floor(MAP_W / 2);
+
+  // lorong utama bergaris hazard (kuning-hitam) membelah gudang + apron dock
+  for (let y = 3; y < MAP_H - 2; y++) { set(mid - 1, y, 'H'); set(mid, y, 'H'); }
+  rect(mid - 4, 3, mid + 3, 4, 'H');
+
+  // workstation / meja packing baja di jalur atas (posisi duduk agen)
   for (const cx of DESK_X) {
-    rect(cx - 2, 7, cx + 1, 8, 'D');   // 4x2 desk cluster
-    set(cx, 6, 'C');                   // north seat (the working chair)
-    set(cx, 9, 'C');                   // south chair
+    rect(cx - 2, 7, cx + 1, 8, 'D');   // 4x2 counter cluster
+    set(cx, 6, 'C');                   // north seat (the working stool)
+    set(cx, 9, 'C');                   // south stool
   }
-  rect(MAP_W - 6, 4, MAP_W - 5, 5, 'K');  // coffee corner
-  rect(2, 10, 2, 12, 'R');                // server rack
-  rect(mid - 4, 14, mid + 3, 15, 'T');    // meeting table
-  rect(4, MAP_H - 7, 11, MAP_H - 4, 'M'); // rug
-  rect(5, MAP_H - 6, 10, MAP_H - 5, 'S'); // sofa
-  set(7, 3, 'P'); set(MAP_W - 8, 3, 'P'); set(7, MAP_H - 3, 'P'); set(MAP_W - 8, MAP_H - 3, 'P');
+
+  // konveyor belt membawa kardus ke arah dock (jalur kanan)
+  for (let x = mid + 2; x < MAP_W - 4; x++) set(x, 11, 'T');
+
+  // baris rak palet disela tumpukan kargo (lantai bawah gudang)
+  for (const ry of [14, 18]) {
+    if (ry > MAP_H - 4) continue;
+    for (let x = 4; x < MAP_W - 4; x++) {
+      if (Math.abs(x - mid) < 2) continue;          // jaga lorong tengah tetap lega
+      set(x, ry, (x % 6 === 3) ? 'B' : 'R');         // kargo menyela deretan rak
+    }
+  }
+
+  // forklift parkir di lorong silang
+  set(5, 11, 'F'); set(mid + 6, MAP_H - 5, 'F');
+
+  // kontainer pengiriman menumpuk di sudut bawah
+  rect(4, MAP_H - 5, 8, MAP_H - 3, 'S');
+  rect(MAP_W - 9, MAP_H - 5, MAP_W - 5, MAP_H - 3, 'S');
+
   return g.map((r) => r.join(''));
 }
 
 function buildWaypoints() {
   const mid = Math.floor(MAP_W / 2);
   return [
-    [DESK_X[0], 10], [DESK_X[1], 10], [DESK_X[2], 10], [MAP_W - 4, 7],
-    [8, MAP_H - 4], [mid, 16], [12, 12], [MAP_W - 14, 12], [10, 5],
-    [mid + 5, 5], [MAP_W - 11, MAP_H - 6], [16, MAP_H - 3],
+    [mid, 6], [mid, 11], [mid, 16], [mid, 20],        // lorong hazard tengah
+    [DESK_X[0], 10], [DESK_X[1], 10], [DESK_X[2], 10], // depan meja packing
+    [mid - 5, 12], [mid + 4, 12],                      // lorong silang
+    [8, 6], [10, 16], [MAP_W - 12, 16], [MAP_W - 11, 20],
   ];
 }
 
@@ -312,5 +335,18 @@ function tileAt(tx, ty) {
 
 function isWalkable(tx, ty) {
   const t = tileAt(tx, ty);
-  return t === '.' || t === 'M';
+  return t === '.' || t === 'H';
+}
+
+/* tile yang boleh diinjak agen saat berjalan.
+   Rak/kardus/forklift/konveyor/kontainer/meja/bangku = padat, harus dikelilingi. */
+function isPassable(tx, ty) {
+  const t = tileAt(tx, ty);
+  return t === '.' || t === 'H';
+}
+
+/* bangku kerja: hanya sah jadi tujuan duduk agen yang bertugas,
+   bukan lorong yang bisa dilewati agen lain. */
+function isSeat(tx, ty) {
+  return tileAt(tx, ty) === 'C';
 }

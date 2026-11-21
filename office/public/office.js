@@ -24,6 +24,14 @@ function fitCanvas() {
       ch.y = Math.min(ch.y, (MAP_H - 3) * TILE);
       ch.tx = Math.min(ch.tx, (MAP_W - 3) * TILE);
       ch.ty = Math.min(ch.ty, (MAP_H - 3) * TILE);
+      // map baru = rak pindah tempat; buang jalur lama & keluarkan dari prop padat
+      ch.path = null; ch.pathKey = null; ch.wander = null; ch.chase = null;
+      const t = tileOfPx(ch.x + 8, ch.y + 17);
+      const onSeat = isSeat(t[0], t[1]) && ch.desk && t[0] === ch.desk[0] && t[1] === ch.desk[1];
+      if (!isPassable(t[0], t[1]) && !onSeat) {
+        const safe = nearestPassable(t);
+        if (safe) { ch.x = safe[0] * TILE; ch.y = safe[1] * TILE - 2; }
+      }
     }
   }
   canvas.style.width = '100%';
@@ -40,7 +48,7 @@ const state = {
   chat: null,
   sessionStore: loadStore(),
   running: {},
-  ball: null,          // bola yang dilempar ke lantai {x,y,chaser}
+  ball: null,          // kardus yang dijatuhkan ke lantai {x,y,chaser}
   catJumpUntil: 0,     // timestamp lompatan kucing
 };
 
@@ -104,6 +112,10 @@ function syncChars() {
       jumpUntil: prev ? prev.jumpUntil : 0,
       emote: prev ? prev.emote : '',
       emoteUntil: prev ? prev.emoteUntil : 0,
+      wander: prev ? prev.wander : null,
+      path: prev ? prev.path : null,
+      pathKey: prev ? prev.pathKey : null,
+      chase: prev ? prev.chase : null,
     });
   }
   // Waker yang belum cocok role mana pun: ikut jalan-jalan di kantor
@@ -130,6 +142,10 @@ function syncChars() {
       jumpUntil: prev ? prev.jumpUntil : 0,
       emote: prev ? prev.emote : '',
       emoteUntil: prev ? prev.emoteUntil : 0,
+      wander: prev ? prev.wander : null,
+      path: prev ? prev.path : null,
+      pathKey: prev ? prev.pathKey : null,
+      chase: prev ? prev.chase : null,
     });
   }
   state.chars = next;
@@ -137,56 +153,163 @@ function syncChars() {
 
 /* ---------------- character brain ---------------- */
 
+/* anchor = titik kaki sprite (tile-px); dipakai untuk okupansi tile & pathing.
+   Sprite 18px tinggi vs tile 16px: anchor ditaruh dekat dasar sprite supaya
+   badan agen muat di dalam tile-nya sendiri dan tidak terlihat menimpa rak. */
+function anchorOf(ch) { return [ch.x + 8, ch.y + 17]; }
+function tileOfPx(px, py) { return [Math.floor(px / TILE), Math.floor(py / TILE)]; }
+function nodeCenter(t) { return [t[0] * TILE + 8, t[1] * TILE + 15]; }
+
+/* tile lolos terdekat (cincin BFS); dipakai mengeluarkan agen yang terperangkap */
+function nearestPassable(tile) {
+  if (isPassable(tile[0], tile[1])) return tile;
+  const key = (x, y) => y * MAP_W + x;
+  const seen = new Set([key(tile[0], tile[1])]);
+  const q = [tile];
+  for (let i = 0; i < q.length; i++) {
+    for (const d of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const nx = q[i][0] + d[0]; const ny = q[i][1] + d[1];
+      if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H) continue;
+      const k = key(nx, ny);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      if (isPassable(nx, ny)) return [nx, ny];
+      q.push([nx, ny]);
+    }
+  }
+  return null;
+}
+
+/* BFS jalur terpendek antar tile yang bisa dilewati; null bila tak terjangkau.
+   Ini yang bikin agen mengelilingi rak/kardus, bukan menerobosnya. */
+function findPath(from, to) {
+  let tx = to[0]; let ty = to[1];
+  // tujuan boleh berupa bangku kerja (duduk); selain itu harus tile lolos
+  if (!isPassable(tx, ty) && !isSeat(tx, ty)) {
+    const alt = [[tx + 1, ty], [tx - 1, ty], [tx, ty + 1], [tx, ty - 1]]
+      .find((n) => isPassable(n[0], n[1]));
+    if (!alt) return null;
+    tx = alt[0]; ty = alt[1];
+  }
+  const sx = from[0]; const sy = from[1];
+  const key = (x, y) => y * MAP_W + x;
+  const start = key(sx, sy);
+  const goal = key(tx, ty);
+  if (start === goal) return [];
+  const prev = new Map([[start, -1]]);
+  const queue = [start];
+  const dirs = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+  for (let qi = 0; qi < queue.length; qi++) {
+    const cur = queue[qi];
+    if (cur === goal) break;
+    const cx = cur % MAP_W; const cy = Math.floor(cur / MAP_W);
+    for (const d of dirs) {
+      const nx = cx + d[0]; const ny = cy + d[1];
+      if (nx < 0 || ny < 0 || nx >= MAP_W || ny >= MAP_H) continue;
+      // tile padat tak boleh dilewati; bangku hanya boleh sebagai tujuan akhir
+      if (!isPassable(nx, ny) && !(nx === tx && ny === ty)) continue;
+      const k = key(nx, ny);
+      if (prev.has(k)) continue;
+      prev.set(k, cur);
+      queue.push(k);
+    }
+  }
+  if (!prev.has(goal)) return null;
+  const path = [];
+  for (let k = goal; k !== start && k !== -1; k = prev.get(k)) {
+    path.push([k % MAP_W, Math.floor(k / MAP_W)]);
+  }
+  path.reverse();
+  return path;
+}
+
 function updateChars(now, dt) {
   for (const ch of state.chars) {
     if (!ch.waker || !ch.waker.online) { ch.mode = 'away'; continue; }
     ch.mode = state.running[ch.waker.agentId] ? 'work' : 'wander';
+
+    // pengaman: agen tak boleh berada di dalam prop padat (mis. usai resize map)
+    const here = tileOfPx(...anchorOf(ch));
+    const onOwnSeat = isSeat(here[0], here[1]) && ch.mode === 'work' && ch.desk
+      && here[0] === ch.desk[0] && here[1] === ch.desk[1];
+    if (!isPassable(here[0], here[1]) && !onOwnSeat) {
+      const safe = nearestPassable(here);
+      if (safe) { ch.x = safe[0] * TILE; ch.y = safe[1] * TILE - 2; }
+      ch.path = null; ch.pathKey = null; ch.wander = null;
+    }
+
+    // tentukan tile tujuan sesuai mode
+    let target = null;
     if (ch.mode === 'work' && ch.desk) {
-      ch.tx = ch.desk[0] * TILE + 1;
-      ch.ty = ch.desk[1] * TILE - 2;
-    } else if (now > ch.pauseUntil) {
-      const arrived = Math.abs(ch.x - ch.tx) < 1 && Math.abs(ch.y - ch.ty) < 1;
-      if (arrived) {
+      target = [ch.desk[0], ch.desk[1]];
+    } else if (ch.chase) {
+      target = ch.chase;
+    } else {
+      const atWander = ch.wander && here[0] === ch.wander[0] && here[1] === ch.wander[1];
+      if (!ch.wander || atWander) {
+        if (atWander && Math.random() < 0.35) ch.pauseUntil = now + 1200 + Math.random() * 2500;
         const wp = WAYPOINTS[Math.floor(Math.random() * WAYPOINTS.length)];
-        ch.tx = wp[0] * TILE + 1;
-        ch.ty = wp[1] * TILE - 2;
-        if (Math.random() < 0.35) ch.pauseUntil = now + 1200 + Math.random() * 2500;
+        ch.wander = [wp[0], wp[1]];
+      }
+      if (now > ch.pauseUntil) target = ch.wander;
+    }
+
+    // hitung ulang jalur hanya saat tujuan berubah
+    const tkey = target ? target.join(',') : '';
+    if (tkey !== ch.pathKey) {
+      ch.pathKey = tkey;
+      ch.path = target ? (findPath(tileOfPx(...anchorOf(ch)), target) || []) : null;
+    }
+
+    // ikuti jalur tile demi tile — tidak pernah menembus rak/kardus
+    let moving = false;
+    if (ch.path && ch.path.length) {
+      const c = nodeCenter(ch.path[0]);
+      const a0 = anchorOf(ch);
+      let ax = a0[0]; let ay = a0[1];
+      const dx = c[0] - ax; const dy = c[1] - ay;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 1) {
+        const step = Math.min(40 * dt, dist);
+        ax += (dx / dist) * step;
+        ay += (dy / dist) * step;
+        ch.x = ax - 8; ch.y = ay - 17;
+        ch.flip = dx < 0;
+        moving = true;
+      } else {
+        ch.path.shift();
       }
     }
-    const dx = ch.tx - ch.x;
-    const dy = ch.ty - ch.y;
-    const dist = Math.hypot(dx, dy);
-    if (dist > 1) {
-      const speed = 40 * dt;
-      ch.x += (dx / dist) * Math.min(speed, dist);
-      ch.y += (dy / dist) * Math.min(speed, dist);
-      ch.flip = dx < 0;
-      ch.frame = Math.floor(now / 200) % 2;
-    } else {
-      ch.frame = Math.floor(now / 520) % 2;
-    }
+    ch.frame = moving ? Math.floor(now / 200) % 2 : Math.floor(now / 520) % 2;
   }
 }
 
-/* vscode-pet style: bola di lantai dikejar karyawan terdekat yang santai */
+/* vscode-pet style: kardus di lantai diambil pekerja terdekat yang santai */
 function updateBall(now) {
   const b = state.ball;
-  if (!b) return;
-  let chaser = state.chars.find((c) => c.roleId === b.chaser && c.mode === 'wander');
+  if (!b) {
+    for (const ch of state.chars) ch.chase = null;
+    return;
+  }
+  const bt = [Math.floor(b.x / TILE), Math.floor(b.y / TILE)];
+  let chaser = state.chars.find((c) => c.roleId === b.chaser && c.mode === 'wander' && c.chase);
   if (!chaser) {
     const idle = state.chars.filter((c) => c.waker && c.waker.online && c.mode === 'wander');
     idle.sort((a, c) => Math.hypot(a.x - b.x, a.y - b.y) - Math.hypot(c.x - b.x, c.y - b.y));
     chaser = idle[0] || null;
     b.chaser = chaser ? chaser.roleId : null;
+    for (const c of state.chars) c.chase = null;
+    if (chaser) chaser.chase = bt;
   }
   if (!chaser) return;
-  chaser.tx = b.x;
-  chaser.ty = b.y + 2;
+  chaser.chase = bt;
   chaser.pauseUntil = 0;
-  if (Math.hypot(chaser.x - b.x, chaser.y - b.y) < 2) {
+  const a = anchorOf(chaser);
+  if (Math.hypot(a[0] - b.x, a[1] - b.y) < 8) {
     chaser.jumpUntil = now + 650;
     chaser.emote = 'heart';
     chaser.emoteUntil = now + 1400;
+    chaser.chase = null;
     state.ball = null;
   }
 }
@@ -211,7 +334,7 @@ function buildStaticLayer() {
       drawTile(g, tileAt(tx, ty), tx, ty);
     }
   }
-  drawDoor(g);
+  drawDock(g);
 }
 
 function drawTile(g, t, tx, ty) {
@@ -220,18 +343,20 @@ function drawTile(g, t, tx, ty) {
   const S = SCALE;
   if (t === 'X') return; // void stays black
   if (t === '#') {
-    g.fillStyle = '#0c0f18';
+    // dinding metal bergelombang (corrugated warehouse wall)
+    g.fillStyle = '#171b26';
     g.fillRect(x, y, TS, TS);
-    g.fillStyle = '#141827';
-    g.fillRect(x + 1 * S, y + 3 * S, 14 * S, 2 * S);
-    g.fillStyle = '#080a12';
-    g.fillRect(x, y + 12 * S, TS, 4 * S);
+    g.fillStyle = '#212838';
+    for (let i = 1; i < 16; i += 3) g.fillRect(x + i * S, y, S, TS);
+    g.fillStyle = '#0c0f16';
+    g.fillRect(x, y + 12 * S, TS, 4 * S); // skirt pondasi
     return;
   }
   if (t === '.') {
-    g.fillStyle = (tx + ty) % 2 === 0 ? '#3d4658' : '#384152';
+    // lantai beton dengan sambungan ekspansi
+    g.fillStyle = (tx + ty) % 2 === 0 ? '#41464f' : '#3b4048';
     g.fillRect(x, y, TS, TS);
-    g.fillStyle = '#2b3242';
+    g.fillStyle = '#2f343c';
     g.fillRect(x + TS - S, y, S, TS);
     g.fillRect(x, y + TS - S, TS, S);
     if ((tx * 7 + ty * 13) % 11 === 0) {
@@ -240,80 +365,167 @@ function drawTile(g, t, tx, ty) {
     }
     return;
   }
-  if (t === 'M') {
-    g.fillStyle = '#463158';
+  if (t === 'H') {
+    // lorong bergaris hazard kuning-hitam (bisa dilewati)
+    g.fillStyle = '#c9a227';
     g.fillRect(x, y, TS, TS);
-    g.fillStyle = '#573d6b';
-    g.fillRect(x + 2 * S, y + 2 * S, 12 * S, 12 * S);
-    g.fillStyle = '#3a2949';
+    g.fillStyle = '#20202a';
+    for (let r = 0; r < 16; r++) {
+      for (let c = 0; c < 16; c++) {
+        if (((c + r) % 8) < 4) g.fillRect(x + c * S, y + r * S, S, S);
+      }
+    }
+    g.fillStyle = 'rgba(0,0,0,0.18)';
     g.fillRect(x + TS - S, y, S, TS);
+    g.fillRect(x, y + TS - S, TS, S);
     return;
   }
-  if (t === 'D' || t === 'T') {
-    g.fillStyle = t === 'D' ? '#6b421f' : '#7a4E28'.toLowerCase();
+  if (t === 'D') {
+    // meja packing / workstation baja
+    g.fillStyle = '#4a5060';
     g.fillRect(x, y, TS, TS);
-    g.fillStyle = t === 'D' ? '#8a5a30' : '#93663d';
-    g.fillRect(x + 1 * S, y + 1 * S, 14 * S, 14 * S);
-    g.fillStyle = 'rgba(0,0,0,0.25)';
-    g.fillRect(x + 1 * S, y + 8 * S, 14 * S, 1 * S);
+    g.fillStyle = '#5c6474';
+    g.fillRect(x + 1 * S, y + 1 * S, 14 * S, 6 * S); // worktop
+    g.fillStyle = '#7d8698';
+    g.fillRect(x + 1 * S, y + 1 * S, 14 * S, S);      // kilau tepi
+    g.fillStyle = '#2f343c';
+    g.fillRect(x + 1 * S, y + 9 * S, 14 * S, 6 * S);  // kabinet bawah
     return;
   }
   if (t === 'C') {
+    // bangku kerja
     g.fillStyle = '#2c3145';
-    g.fillRect(x + 4 * S, y + 5 * S, 8 * S, 8 * S);
+    g.fillRect(x + 4 * S, y + 6 * S, 8 * S, 6 * S);
     g.fillStyle = '#3a4059';
-    g.fillRect(x + 4 * S, y + 3 * S, 8 * S, 3 * S);
-    return;
-  }
-  if (t === 'P') {
-    g.fillStyle = '#5c311d';
-    g.fillRect(x + 5 * S, y + 10 * S, 6 * S, 5 * S);
-    g.fillStyle = '#1d6b3a';
-    g.fillRect(x + 3 * S, y + 3 * S, 10 * S, 8 * S);
-    g.fillStyle = '#2fa14e';
-    g.fillRect(x + 5 * S, y + 1 * S, 6 * S, 5 * S);
-    return;
-  }
-  if (t === 'K') {
-    g.fillStyle = '#7e2626';
-    g.fillRect(x + 2 * S, y + 2 * S, 12 * S, 13 * S);
-    g.fillStyle = '#c9ccd6';
-    g.fillRect(x + 4 * S, y + 4 * S, 8 * S, 4 * S);
-    g.fillStyle = '#15151f';
-    g.fillRect(x + 5 * S, y + 10 * S, 6 * S, 3 * S);
-    return;
-  }
-  if (t === 'S') {
-    g.fillStyle = '#4a3268';
-    g.fillRect(x, y + 2 * S, TS, 12 * S);
-    g.fillStyle = '#5c3f80';
-    g.fillRect(x + 1 * S, y + 4 * S, 14 * S, 5 * S);
+    g.fillRect(x + 4 * S, y + 4 * S, 8 * S, 3 * S);
+    g.fillStyle = '#20242f';
+    g.fillRect(x + 7 * S, y + 12 * S, 2 * S, 3 * S);
     return;
   }
   if (t === 'R') {
-    g.fillStyle = '#0b0d14';
-    g.fillRect(x + 3 * S, y, 10 * S, TS);
-    g.fillStyle = '#1c2130';
-    g.fillRect(x + 5 * S, y + 3 * S, 6 * S, 2 * S);
-    g.fillRect(x + 5 * S, y + 8 * S, 6 * S, 2 * S);
+    // rak palet: upright oranye + beam biru + kardus
+    g.fillStyle = '#242938';
+    g.fillRect(x, y, TS, TS);
+    g.fillStyle = '#d9691f';
+    g.fillRect(x, y, 2 * S, TS);
+    g.fillRect(x + 14 * S, y, 2 * S, TS);
+    g.fillStyle = '#3a6ea5';
+    g.fillRect(x, y + 6 * S, TS, S);
+    g.fillRect(x, y + 13 * S, TS, S);
+    g.fillStyle = '#b5813f';
+    g.fillRect(x + 3 * S, y + 1 * S, 5 * S, 5 * S);
+    g.fillRect(x + 9 * S, y + 2 * S, 4 * S, 4 * S);
+    g.fillRect(x + 3 * S, y + 8 * S, 4 * S, 5 * S);
+    g.fillRect(x + 8 * S, y + 8 * S, 5 * S, 5 * S);
+    g.fillStyle = '#8a5f2c';
+    g.fillRect(x + 3 * S, y + 3 * S, 5 * S, S);
+    return;
+  }
+  if (t === 'B') {
+    // tumpukan kargo di atas palet kayu
+    g.fillStyle = '#8a5f2c';
+    g.fillRect(x, y + 13 * S, TS, 3 * S);
+    g.fillStyle = '#6b471f';
+    g.fillRect(x + 2 * S, y + 14 * S, 2 * S, 2 * S);
+    g.fillRect(x + 12 * S, y + 14 * S, 2 * S, 2 * S);
+    g.fillStyle = '#c08a45';
+    g.fillRect(x + 1 * S, y + 6 * S, 14 * S, 7 * S);
+    g.fillStyle = '#a5712f';
+    g.fillRect(x + 1 * S, y + 9 * S, 14 * S, S);
+    g.fillStyle = '#c08a45';
+    g.fillRect(x + 3 * S, y + 1 * S, 10 * S, 5 * S);
+    g.fillStyle = '#e0c48a';
+    g.fillRect(x + 7 * S, y + 1 * S, 2 * S, 12 * S); // selotip
+    g.fillStyle = '#f2ede0';
+    g.fillRect(x + 3 * S, y + 7 * S, 4 * S, 3 * S);   // label kirim
+    return;
+  }
+  if (t === 'F') {
+    // forklift kuning dengan tiang + garpu
+    g.fillStyle = '#f2b01e';
+    g.fillRect(x + 2 * S, y + 6 * S, 8 * S, 6 * S);
+    g.fillStyle = '#2a2f3d';
+    g.fillRect(x + 3 * S, y + 2 * S, 6 * S, S);   // overhead guard
+    g.fillRect(x + 3 * S, y + 2 * S, S, 4 * S);
+    g.fillRect(x + 8 * S, y + 2 * S, S, 4 * S);
+    g.fillStyle = '#3a3f4a';
+    g.fillRect(x + 11 * S, y + 1 * S, 2 * S, 12 * S); // tiang
+    g.fillStyle = '#c9ccd6';
+    g.fillRect(x + 13 * S, y + 11 * S, 3 * S, S);
+    g.fillRect(x + 13 * S, y + 13 * S, 3 * S, S);      // garpu
+    g.fillStyle = '#15151f';
+    g.fillRect(x + 2 * S, y + 12 * S, 3 * S, 3 * S);
+    g.fillRect(x + 7 * S, y + 12 * S, 3 * S, 3 * S);   // roda
+    g.fillStyle = '#ff7a1a';
+    g.fillRect(x + 5 * S, y + 1 * S, 2 * S, S);        // beacon
+    return;
+  }
+  if (t === 'T') {
+    // konveyor belt membawa kardus
+    g.fillStyle = '#20242f';
+    g.fillRect(x + 1 * S, y + 12 * S, 2 * S, 4 * S);
+    g.fillRect(x + 13 * S, y + 12 * S, 2 * S, 4 * S);
+    g.fillStyle = '#2a2f3d';
+    g.fillRect(x, y + 6 * S, TS, 6 * S);
+    g.fillStyle = '#15151f';
+    g.fillRect(x, y + 7 * S, TS, 4 * S);
+    g.fillStyle = '#4a5060';
+    for (let i = 1; i < 16; i += 4) g.fillRect(x + i * S, y + 8 * S, 2 * S, 2 * S);
+    g.fillStyle = '#c08a45';
+    g.fillRect(x + 5 * S, y + 2 * S, 6 * S, 5 * S); // kardus di atas belt
+    g.fillStyle = '#e0c48a';
+    g.fillRect(x + 7 * S, y + 2 * S, 2 * S, 5 * S);
+    return;
+  }
+  if (t === 'S') {
+    // kontainer pengiriman bergelombang
+    const blue = (tx + ty) % 2 === 0;
+    g.fillStyle = blue ? '#2f5f8f' : '#8f3b2f';
+    g.fillRect(x, y, TS, TS);
+    g.fillStyle = blue ? '#3d76ab' : '#a8483a';
+    for (let i = 1; i < 16; i += 3) g.fillRect(x + i * S, y + 2 * S, S, 12 * S);
+    g.fillStyle = blue ? '#1d3d5c' : '#5f241c';
+    g.fillRect(x, y, TS, 2 * S);
+    g.fillRect(x, y + 14 * S, TS, 2 * S);
+    g.fillStyle = '#c9ccd6';
+    g.fillRect(x + 7 * S, y + 3 * S, S, 10 * S);
+    g.fillRect(x + 9 * S, y + 3 * S, S, 10 * S);   // pintu + batang pengunci
     return;
   }
 }
 
-function drawDoor(g) {
+function drawDock(g) {
   const S = SCALE;
-  const x = (Math.floor(MAP_W / 2) - 2) * TS;
-  const y = 1 * TS - 4 * S;
-  g.fillStyle = '#232a3d';
-  g.fillRect(x - 2 * S, y - 2 * S, 4 * TS + 4 * S, 2 * TS + 6 * S);
-  g.fillStyle = '#12151f';
-  g.fillRect(x, y, 4 * TS, 2 * TS + 2 * S);
-  g.fillStyle = '#2c3550';
-  g.fillRect(x + 12 * S, y + 6 * S, 10 * S, 8 * S);
-  g.fillStyle = '#3a4468';
-  g.fillRect(x + 13 * S, y + 7 * S, 3 * S, 3 * S);
-  g.fillStyle = '#0a0c12';
-  g.fillRect(x + 4 * S, y + 2 * TS - 2 * S, 3 * S, 6 * S);
+  const mid = Math.floor(MAP_W / 2);
+  const bx = (mid - 3) * TS;
+  const bw = 6 * TS;
+  const bh = 3 * TS;
+  // beton penyangga dock
+  g.fillStyle = '#20242f';
+  g.fillRect(bx - 2 * S, 0, bw + 4 * S, bh);
+  // rongga bay (halaman luar gelap)
+  g.fillStyle = '#080b12';
+  g.fillRect(bx, S, bw, bh - S);
+  // rolling shutter (setengah terbuka) + rusuk
+  g.fillStyle = '#3d4454';
+  g.fillRect(bx, 0, bw, 10 * S);
+  g.fillStyle = '#2b3140';
+  for (let i = 1; i < 10; i += 2) g.fillRect(bx, i * S, bw, S);
+  // trailer truk mundur ke dalam bay
+  g.fillStyle = '#c9ccd6';
+  g.fillRect(bx + 8 * S, 10 * S, bw - 16 * S, bh - 12 * S);
+  g.fillStyle = '#9aa0ae';
+  g.fillRect(bx + 8 * S, 10 * S, bw - 16 * S, 3 * S);
+  g.fillStyle = '#7d838f';
+  g.fillRect(bx + bw / 2 - S, 12 * S, 2 * S, bh - 16 * S); // sambungan pintu
+  // lampu dock menghangatkan bay
+  g.fillStyle = 'rgba(255,190,90,0.14)';
+  g.fillRect(bx, 10 * S, bw, bh - 10 * S);
+  // bumper strip hazard di bibir dock
+  for (let c = 0; c < bw / S; c += 2) {
+    g.fillStyle = (c % 4 === 0) ? '#c9a227' : '#20202a';
+    g.fillRect(bx + c * S, bh - 3 * S, 2 * S, 3 * S);
+  }
 }
 
 
@@ -360,7 +572,7 @@ function drawDeskProps(g, cx, working, now) {
   g.fillRect(sx, sy, 12 * S, 9 * S);
   g.fillStyle = working ? '#0e3c46' : '#141c28';
   g.fillRect(sx + 1 * S, sy + 2 * S, 10 * S, 6 * S);
-  // tiny code terminal on the cluster
+  // tiny manifest terminal on the cluster (layar rekap DO/POD)
   const tx = dx - 1 * TS + 3 * S;
   const ty = 8 * TS + 2 * S;
   g.fillStyle = '#151824';
@@ -377,6 +589,17 @@ function drawDeskProps(g, cx, working, now) {
   g.fillRect(dx - 1 * TS + 3 * S, 9 * TS - 1 * S, 10 * S, 2 * S);
   g.fillStyle = '#6b6f7d';
   g.fillRect(dx + 1 * TS, 7 * TS + 12 * S, 2 * S, 2 * S);
+  // kardus menunggu kirim + pemindai barcode di meja packing
+  g.fillStyle = '#c08a45';
+  g.fillRect(dx + 1 * TS + 6 * S, 8 * TS + 2 * S, 6 * S, 5 * S);
+  g.fillStyle = '#e0c48a';
+  g.fillRect(dx + 1 * TS + 8 * S, 8 * TS + 2 * S, 2 * S, 5 * S);
+  g.fillStyle = '#f2ede0';
+  g.fillRect(dx + 1 * TS + 6 * S, 8 * TS + 4 * S, 2 * S, 2 * S);
+  g.fillStyle = '#15151f';
+  g.fillRect(dx - 1 * TS + 12 * S, 8 * TS + 3 * S, 3 * S, 5 * S); // scanner
+  g.fillStyle = Math.floor(now / 400) % 2 ? '#e0483e' : '#5a1f1a';
+  g.fillRect(dx - 1 * TS + 12 * S, 8 * TS + 3 * S, 3 * S, S);
 }
 
 function draw(now) {
@@ -384,20 +607,18 @@ function draw(now) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(staticLayer, 0, 0);
 
-  // spotlight pool over the room
+  // spotlight pool over the warehouse floor (cahaya lampu dock hangat)
   const cx = canvas.width / 2;
   const cy = canvas.height * 0.52;
   const pool = ctx.createRadialGradient(cx, cy, TS * 2, cx, cy, canvas.width * 0.42);
-  pool.addColorStop(0, 'rgba(190,210,255,0.10)');
-  pool.addColorStop(1, 'rgba(190,210,255,0)');
+  pool.addColorStop(0, 'rgba(255,214,150,0.12)');
+  pool.addColorStop(1, 'rgba(255,214,150,0)');
   ctx.fillStyle = pool;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // rack LEDs
-  for (let i = 0; i < 2; i++) {
-    ctx.fillStyle = Math.floor(now / 400) % 2 === i ? '#43e07c' : '#20503a';
-    ctx.fillRect(2 * TS + 5 * SCALE, (10 + i) * TS + 3 * SCALE, 2 * SCALE, 2 * SCALE);
-  }
+  // beacon forklift berkedip di lorong kiri
+  ctx.fillStyle = Math.floor(now / 500) % 2 ? '#ff9a2a' : '#5a3410';
+  ctx.fillRect(5 * TS + 5 * SCALE, 11 * TS + 1 * SCALE, 2 * SCALE, SCALE);
 
   // desk clusters + cat
   const workingByRole = {};
@@ -420,19 +641,22 @@ function draw(now) {
   }
   if (catJump) drawEmote(ctx, catX + 5 * SCALE, catY - 8 * SCALE, 'heart', now);
 
-  // ball on the floor (vscode-pet style throw)
+  // kardus di lantai (vscode-pet style: dilempar, diambil pekerja santai)
   if (state.ball) {
     const bx = state.ball.x * SCALE;
     const by = state.ball.y * SCALE;
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.beginPath();
-    ctx.ellipse(bx, by + 3 * SCALE, 4 * SCALE, 1.5 * SCALE, 0, 0, Math.PI * 2);
+    ctx.ellipse(bx, by + 4 * SCALE, 5 * SCALE, 2 * SCALE, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#e0483e';
-    ctx.fillRect(bx - 3 * SCALE, by - 3 * SCALE, 6 * SCALE, 6 * SCALE);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(bx - 3 * SCALE, by - SCALE, 6 * SCALE, 2 * SCALE);
-    ctx.fillRect(bx - SCALE, by - 3 * SCALE, 2 * SCALE, 2 * SCALE);
+    ctx.fillStyle = '#b5813f';
+    ctx.fillRect(bx - 5 * SCALE, by - 5 * SCALE, 10 * SCALE, 9 * SCALE);
+    ctx.fillStyle = '#8a5f2c';
+    ctx.fillRect(bx - 5 * SCALE, by + 2 * SCALE, 10 * SCALE, 2 * SCALE);
+    ctx.fillStyle = '#e0c48a';
+    ctx.fillRect(bx - SCALE, by - 5 * SCALE, 2 * SCALE, 9 * SCALE); // selotip
+    ctx.fillStyle = '#f2ede0';
+    ctx.fillRect(bx + SCALE, by - 3 * SCALE, 3 * SCALE, 3 * SCALE); // label kirim
   }
 
   // characters, depth-sorted
@@ -874,7 +1098,7 @@ function charAt(px, py) {
 }
 
 /* klik = sapa/elus (reaksi lompat + emote ala vscode-pet);
-   klik 2x = buka chat; klik lantai = lempar bola; meja vacant = hire */
+   klik 2x = buka chat; klik lantai = taruh kardus; meja vacant = hire */
 canvas.addEventListener('click', (e) => {
   const { px, py } = canvasPoint(e);
   const now = performance.now();
