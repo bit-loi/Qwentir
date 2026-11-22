@@ -22,7 +22,21 @@
   <main id="stage">
     <div id="canvas-wrap">
       <canvas id="office"></canvas>
-      <div id="hint">KLIK PEKERJA = SAPA — KLIK LANTAI = TARUH KARDUS — KLIK 2× = CHAT &amp; TASK — MEJA VACANT = HIRE</div>
+      <div id="wf-panel">
+        <div id="wf-head">
+          <span id="wf-status" class="chip">WF: IDLE</span>
+          <span id="wf-stages"></span>
+        </div>
+        <div id="wf-log"></div>
+        <div id="wf-actions">
+          <button id="wf-start" title="satu klik: Intake -> Reconciliation -> Billing jalan sendiri">MULAI</button>
+          <button id="wf-pause" disabled title="tahan dispatch otomatis; turn berjalan dibiarkan selesai">PAUSE</button>
+          <button id="wf-stop" disabled title="stop workflow; output stage selesai tetap tersimpan">STOP</button>
+          <button id="wf-retry" disabled title="ulangi stage yang gagal saja">RETRY</button>
+          <button id="wf-approve" disabled title="setujui draft invoice billing">APPROVE</button>
+        </div>
+      </div>
+      <div id="hint">KLIK PEKERJA = SAPA — KLIK LANTAI = TARUH KARDUS — KLIK 2× = CHAT &amp; TASK — MEJA VACANT = HIRE — PANEL WF = PIPELINE OTOMATIS</div>
     </div>
 
     <aside id="drawer">

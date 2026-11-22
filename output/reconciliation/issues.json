@@ -1,0 +1,86 @@
+[
+  {
+    "order_id": "DO-033",
+    "sumber": "order",
+    "jenis": "order_incomplete",
+    "alasan": "Field wajib kosong: volume_muat_liter.",
+    "tindakan": "Tahan; kembalikan ke Intake/klien untuk melengkapi field yang kosong sebelum rekonsiliasi."
+  },
+  {
+    "order_id": "DO-034",
+    "sumber": "order",
+    "jenis": "order_incomplete",
+    "alasan": "Field wajib kosong: tujuan.",
+    "tindakan": "Tahan; kembalikan ke Intake/klien untuk melengkapi field yang kosong sebelum rekonsiliasi."
+  },
+  {
+    "order_id": "DO-035",
+    "sumber": "order",
+    "jenis": "order_incomplete",
+    "alasan": "Field wajib kosong: produk.",
+    "tindakan": "Tahan; kembalikan ke Intake/klien untuk melengkapi field yang kosong sebelum rekonsiliasi."
+  },
+  {
+    "order_id": "DO-901",
+    "sumber": "pod",
+    "jenis": "orphan",
+    "alasan": "Tidak ada order DO-901 di orders.json.",
+    "tindakan": "Tahan; minta konfirmasi order ke penerbit DO, jangan cocokkan ke order mana pun."
+  },
+  {
+    "order_id": "DO-902",
+    "sumber": "pod",
+    "jenis": "orphan",
+    "alasan": "Tidak ada order DO-902 di orders.json.",
+    "tindakan": "Tahan; minta konfirmasi order ke penerbit DO, jangan cocokkan ke order mana pun."
+  },
+  {
+    "order_id": "DO-041",
+    "sumber": "order",
+    "jenis": "tanpa_pod",
+    "alasan": "Order lengkap tetapi tidak ada POD dengan order_id ini.",
+    "tindakan": "Tahan; minta POD dari transportir. Belum direkonsiliasi."
+  },
+  {
+    "order_id": "DO-042",
+    "sumber": "order",
+    "jenis": "tanpa_pod",
+    "alasan": "Order lengkap tetapi tidak ada POD dengan order_id ini.",
+    "tindakan": "Tahan; minta POD dari transportir. Belum direkonsiliasi."
+  },
+  {
+    "order_id": "DO-043",
+    "sumber": "order",
+    "jenis": "tanpa_pod",
+    "alasan": "Order lengkap tetapi tidak ada POD dengan order_id ini.",
+    "tindakan": "Tahan; minta POD dari transportir. Belum direkonsiliasi."
+  },
+  {
+    "order_id": "DO-044",
+    "sumber": "order",
+    "jenis": "tanpa_pod",
+    "alasan": "Order lengkap tetapi tidak ada POD dengan order_id ini.",
+    "tindakan": "Tahan; minta POD dari transportir. Belum direkonsiliasi."
+  },
+  {
+    "order_id": "DO-044",
+    "sumber": "order",
+    "jenis": "overdue",
+    "alasan": "POD belum diterima 8 hari setelah tanggal order 2026-11-10 (batas 3 hari, as-of 2026-11-18).",
+    "tindakan": "Eskalasi ke transportir; prioritas penagihan POD."
+  },
+  {
+    "order_id": "DO-045",
+    "sumber": "order",
+    "jenis": "tanpa_pod",
+    "alasan": "Order lengkap tetapi tidak ada POD dengan order_id ini.",
+    "tindakan": "Tahan; minta POD dari transportir. Belum direkonsiliasi."
+  },
+  {
+    "order_id": "DO-045",
+    "sumber": "order",
+    "jenis": "overdue",
+    "alasan": "POD belum diterima 6 hari setelah tanggal order 2026-11-12 (batas 3 hari, as-of 2026-11-18).",
+    "tindakan": "Eskalasi ke transportir; prioritas penagihan POD."
+  }
+]

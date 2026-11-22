@@ -130,6 +130,49 @@ body::after {
   z-index: 5;
 }
 
+/* workflow panel — founder control (MULAI/PAUSE/STOP/RETRY/APPROVE) */
+#wf-panel {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 6;
+  width: 360px;
+  max-width: 46vw;
+  background: rgba(16, 18, 24, 0.88);
+  border: 2px solid var(--line);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#wf-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+#wf-stages { display: flex; gap: 4px; }
+.wf-stage {
+  font-size: 11px;
+  letter-spacing: 1px;
+  border: 2px solid var(--line);
+  color: var(--dim);
+  padding: 2px 6px;
+}
+.wf-stage.running { border-color: var(--amber); color: var(--amber); animation: blink 1s steps(2) infinite; }
+.wf-stage.done { border-color: var(--green); color: var(--green); }
+.wf-stage.failed, .wf-stage.stopped { border-color: var(--red); color: var(--red); }
+.wf-stage.paused { border-color: var(--amber); color: var(--amber); }
+#wf-log {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--dim);
+  max-height: 84px;
+  overflow: hidden;
+}
+#wf-log .wf-err { color: var(--red); }
+#wf-log .wf-ok { color: var(--green); }
+#wf-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+#wf-actions button { padding: 5px 8px; font-size: 12px; }
+#wf-approve { border-color: var(--green); color: var(--green); }
+
 /* chat drawer */
 #drawer {
   position: absolute;

@@ -48,6 +48,8 @@ const state = {
   chat: null,
   sessionStore: loadStore(),
   running: {},
+  workflow: null,   // state dispatcher dari /api/workflow
+  wfDrafts: 0,      // jumlah invoice draft menunggu approve founder
   ball: null,          // kardus yang dijatuhkan ke lantai {x,y,chaser}
   catJumpUntil: 0,     // timestamp lompatan kucing
 };
@@ -65,12 +67,14 @@ async function api(path, opts) {
 /* ---------------- data refresh ---------------- */
 
 async function refresh() {
-  const [status, wakers, roles] = await Promise.all([
-    api('/api/status'), api('/api/wakers'), api('/api/roles'),
+  const [status, wakers, roles, wf] = await Promise.all([
+    api('/api/status'), api('/api/wakers'), api('/api/roles'), api('/api/workflow'),
   ]);
   state.status = status;
   state.wakers = wakers.wakers || [];
   state.roles = roles.roles || [];
+  state.workflow = wf.workflow || null;
+  state.wfDrafts = wf.draftCount || 0;
   // render dulu biar kantor langsung kelihatan; detail session (CLI lambat)
   // menyusul di background tanpa menahan tampilan pertama
   syncChars();
@@ -85,6 +89,17 @@ async function refresh() {
       state.running[w.agentId] = /running|starting/.test(String(d.raw.runtimeState || ''));
     }
   }));
+  // session workflow dibuat server-side (bukan lewat chat), jadi sprite harus
+  // tahu dari state dispatcher: stage running = pegawai role itu sedang kerja
+  const wfw = state.workflow;
+  if (wfw && wfw.status === 'running' && wfw.stages && wfw.currentStage) {
+    const st = wfw.stages[wfw.currentStage];
+    if (st && st.status === 'running') {
+      const w = state.wakers.find((x) => x.roleId === wfw.currentStage);
+      if (w) state.running[w.agentId] = true;
+    }
+  }
+  renderWorkflow();
 }
 
 function syncChars() {
@@ -790,6 +805,68 @@ function escapeHtml(s) {
   ));
 }
 
+/* ---------------- workflow panel (founder control) ---------------- */
+
+function wfSessionFor(roleId) {
+  const wf = state.workflow;
+  if (!wf || !wf.stages) return null;
+  const st = wf.stages[roleId];
+  return st && st.sessionId ? st.sessionId : null;
+}
+
+function renderWorkflow() {
+  const wf = state.workflow;
+  const statusEl = document.getElementById('wf-status');
+  const label = wf ? String(wf.status).toUpperCase() : 'IDLE';
+  statusEl.textContent = `WF: ${label}`;
+  statusEl.className = 'chip ' + (
+    wf && wf.status === 'completed' ? 'chip-ok'
+      : wf && (wf.status === 'failed' || wf.status === 'stopped') ? 'chip-bad'
+        : wf && (wf.status === 'running' || wf.status === 'paused') ? 'chip-run' : '');
+  const stagesEl = document.getElementById('wf-stages');
+  stagesEl.innerHTML = '';
+  for (const id of ['intake', 'reconciliation', 'billing']) {
+    const st = wf && wf.stages ? wf.stages[id] : null;
+    let cls = st ? st.status : 'pending';
+    if (wf && wf.status === 'paused' && st && st.status === 'running') cls = 'paused';
+    const span = document.createElement('span');
+    span.className = `wf-stage ${cls}`;
+    span.textContent = id === 'reconciliation' ? 'RECON' : id.toUpperCase();
+    span.title = st && st.error ? st.error : (st ? `${st.status}${st.attempts ? ` • percobaan ${st.attempts}` : ''}` : 'pending');
+    stagesEl.append(span);
+  }
+  const logEl = document.getElementById('wf-log');
+  logEl.innerHTML = '';
+  for (const ev of (wf ? wf.events.slice(-4) : [])) {
+    const div = document.createElement('div');
+    div.textContent = `${String(ev.at || '').slice(11, 19)} ${ev.stage ? `${ev.stage} ` : ''}${ev.message}`;
+    if (/failed|error|stop/.test(ev.type)) div.className = 'wf-err';
+    else if (/handoff|completed|done|approve|resume/.test(ev.type)) div.className = 'wf-ok';
+    logEl.append(div);
+  }
+  const active = wf && (wf.status === 'running' || wf.status === 'paused');
+  document.getElementById('wf-start').disabled = !!active;
+  const pauseBtn = document.getElementById('wf-pause');
+  pauseBtn.disabled = !active;
+  pauseBtn.textContent = wf && wf.status === 'paused' ? 'RESUME' : 'PAUSE';
+  document.getElementById('wf-stop').disabled = !active;
+  document.getElementById('wf-retry').disabled = !(wf && wf.status === 'failed');
+  const approveBtn = document.getElementById('wf-approve');
+  approveBtn.disabled = !(state.wfDrafts > 0);
+  approveBtn.textContent = state.wfDrafts > 0 ? `APPROVE (${state.wfDrafts})` : 'APPROVE';
+}
+
+async function wfAction(url, body) {
+  const r = await api(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body || {}),
+  });
+  if (!r.ok && r.error) alert(r.error);
+  await refresh();
+  return r;
+}
+
 /* ---------------- chat + file attachments ---------------- */
 
 const drawer = document.getElementById('drawer');
@@ -799,7 +876,9 @@ function openChat(waker) {
     wakerId: waker.agentId,
     wakerName: waker.name,
     role: state.roles.find((r) => r.id === waker.roleId),
-    sessionId: state.sessionStore[waker.agentId] || null,
+    // session chat pribadi dulu; kalau tidak ada, ikuti session workflow role ini
+    // supaya founder bisa membaca log agent yang sedang bekerja otomatis
+    sessionId: state.sessionStore[waker.agentId] || wfSessionFor(waker.roleId) || null,
     lastSeq: 0,
     seen: {},
     items: [],
@@ -1144,6 +1223,22 @@ document.getElementById('chat-stop').onclick = async () => {
     await api(`/api/sessions/${state.chat.sessionId}/stop`, { method: 'POST' });
     pollEvents();
   }
+};
+
+document.getElementById('wf-start').onclick = () => wfAction('/api/workflow/start');
+document.getElementById('wf-pause').onclick = () => {
+  const wf = state.workflow;
+  return wfAction(wf && wf.status === 'paused' ? '/api/workflow/resume' : '/api/workflow/pause');
+};
+document.getElementById('wf-stop').onclick = () => {
+  if (!confirm('Stop workflow? Output stage yang sudah selesai tetap tersimpan.')) return Promise.resolve();
+  return wfAction('/api/workflow/stop');
+};
+document.getElementById('wf-retry').onclick = () => wfAction('/api/workflow/retry');
+document.getElementById('wf-approve').onclick = async () => {
+  if (!confirm(`Approve ${state.wfDrafts} invoice draft? Status berubah draft -> approved dan tercatat di output/billing/approvals.json.`)) return;
+  const r = await wfAction('/api/workflow/approve');
+  if (r.ok) alert(`Approved: ${r.approved.join(', ')}`);
 };
 
 setInterval(() => { if (state.chat && state.chat.sessionId) pollEvents(); }, 2000);

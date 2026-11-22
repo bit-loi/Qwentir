@@ -1,0 +1,64 @@
+{
+  "root": "C:\\Users\\JBL\\Documents\\Qoder\\2026-11-18\\Qwentir",
+  "generatedAt": "2026-11-22T16:29:16.689Z",
+  "pass": true,
+  "counts": {
+    "order_files": 85,
+    "pod_files": 90,
+    "orders_records": 85,
+    "pods_records": 90,
+    "duplikat": 84,
+    "incomplete": 3,
+    "orphan": 2,
+    "matched_cocok": 35,
+    "matched_selisih": 4,
+    "issues": 12,
+    "invoices": 39,
+    "invoice_draft": 39,
+    "invoice_approved": 0,
+    "total_piutang": 292877500,
+    "answer_key_rows": 20
+  },
+  "checks": [
+    {
+      "name": "intake: jumlah record orders = jumlah file order input",
+      "ok": true,
+      "detail": "file=85 record=85"
+    },
+    {
+      "name": "intake: jumlah record pods = jumlah file POD input",
+      "ok": true,
+      "detail": "file=90 record=90"
+    },
+    {
+      "name": "answer_key: klasifikasi & hasil intake/reconciliation sesuai kunci",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "reconciliation: susut, toleransi, dan kelebihan liter sesuai contracts.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "reconciliation: semua dokumen tertahan tercatat di issues.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "billing: biaya angkut, denda, dan total tagihan sesuai contracts.json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "billing: dokumen tertahan tidak dibuatkan invoice",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "billing: rekap_piutang.csv konsisten dengan invoices.json",
+      "ok": true,
+      "detail": "baris=39 invoice=39"
+    }
+  ]
+}

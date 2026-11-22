@@ -4,7 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "node office/test.js",
+    "test": "node office/test.js && node office/test-workflow.js",
+    "test:office": "node office/test.js",
+    "test:workflow": "node office/test-workflow.js",
+    "validate": "node scripts/validate-output.js",
     "start:office": "node office/server.js"
   },
   "keywords": [],

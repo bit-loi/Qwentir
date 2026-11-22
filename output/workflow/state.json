@@ -1,0 +1,141 @@
+{
+  "workflowId": "WF-2026-11-22T15-24-37",
+  "status": "completed",
+  "currentStage": "billing",
+  "startedAt": "2026-11-22T15:24:37.131Z",
+  "updatedAt": "2026-11-22T16:31:12.951Z",
+  "kickoff": {
+    "message": "Batch demo penuh: proses semua DO & POD yang ada di data/orders, data/pods, output/do, output/pod. Jangan mengarang data; tandai record tidak lengkap sesuai bible.",
+    "files": []
+  },
+  "stages": {
+    "intake": {
+      "status": "done",
+      "sessionId": "c8bebb7b-48c1-4d07-9b7e-ea58d30ed76e",
+      "attempts": 2,
+      "startedAt": "2026-11-22T15:35:53.803Z",
+      "finishedAt": "2026-11-22T16:10:35.720Z",
+      "cursor": 1000019884,
+      "lastEventAt": 1795362830018,
+      "error": null
+    },
+    "reconciliation": {
+      "status": "done",
+      "sessionId": "b816983d-cf82-4e72-b60b-75d5a451b404",
+      "attempts": 1,
+      "startedAt": "2026-11-22T16:10:51.880Z",
+      "finishedAt": "2026-11-22T16:13:08.540Z",
+      "cursor": 1000015292,
+      "lastEventAt": 1795363988538,
+      "error": null
+    },
+    "billing": {
+      "status": "done",
+      "sessionId": "f411e3ef-c043-44ec-afe5-ee1740a783e0",
+      "attempts": 1,
+      "startedAt": "2026-11-22T16:13:19.571Z",
+      "finishedAt": "2026-11-22T16:15:15.294Z",
+      "cursor": 1000009249,
+      "lastEventAt": 1795364115292,
+      "error": null
+    }
+  },
+  "events": [
+    {
+      "at": "2026-11-22T15:24:37.131Z",
+      "type": "workflow_started",
+      "stage": null,
+      "message": "founder memulai workflow — satu klik, tanpa klik manual berikutnya"
+    },
+    {
+      "at": "2026-11-22T15:25:04.650Z",
+      "type": "dispatch",
+      "stage": "intake",
+      "message": "session c78145f7-a4ac-4238-83d0-131e5606d059 dibuat untuk intake (percobaan ke-1)"
+    },
+    {
+      "at": "2026-11-22T15:26:41.548Z",
+      "type": "stage_failed",
+      "stage": "intake",
+      "message": "session berhenti tidak wajar: failed"
+    },
+    {
+      "at": "2026-11-22T15:35:40.434Z",
+      "type": "retry",
+      "stage": "intake",
+      "message": "founder meminta retry stage intake; stage yang done tidak diulang"
+    },
+    {
+      "at": "2026-11-22T15:35:53.803Z",
+      "type": "dispatch",
+      "stage": "intake",
+      "message": "session c8bebb7b-48c1-4d07-9b7e-ea58d30ed76e dibuat untuk intake (percobaan ke-2)"
+    },
+    {
+      "at": "2026-11-22T15:53:50.021Z",
+      "type": "stage_failed",
+      "stage": "intake",
+      "message": "validasi output intake gagal: orders[33] (DO-034) field kosong: tujuan; orders[34] (DO-035) field kosong: produk; orders[82] (DO-033) volume_muat_liter bukan angka > 0 padahal status duplikat; orders[83] (DO-034) field kosong: tujuan; orders[84] (DO-035) field kosong: produk; pods[55] (DO-003) volume_diterima_liter bukan angka > 0 padahal status duplikat"
+    },
+    {
+      "at": "2026-11-22T16:10:35.722Z",
+      "type": "retry",
+      "stage": "intake",
+      "message": "output intake yang sudah ada kini lolos validasi — stage ditandai selesai tanpa menjalankan ulang agen"
+    },
+    {
+      "at": "2026-11-22T16:10:35.722Z",
+      "type": "stage_done",
+      "stage": "intake",
+      "message": "output intake lolos validasi kantor (diterima saat retry)"
+    },
+    {
+      "at": "2026-11-22T16:10:35.722Z",
+      "type": "handoff",
+      "stage": "intake",
+      "message": "oper kerja otomatis ke reconciliation"
+    },
+    {
+      "at": "2026-11-22T16:10:51.880Z",
+      "type": "dispatch",
+      "stage": "reconciliation",
+      "message": "session b816983d-cf82-4e72-b60b-75d5a451b404 dibuat untuk reconciliation (percobaan ke-1)"
+    },
+    {
+      "at": "2026-11-22T16:13:08.540Z",
+      "type": "stage_done",
+      "stage": "reconciliation",
+      "message": "output reconciliation lolos validasi kantor"
+    },
+    {
+      "at": "2026-11-22T16:13:08.540Z",
+      "type": "handoff",
+      "stage": "reconciliation",
+      "message": "oper kerja otomatis ke billing"
+    },
+    {
+      "at": "2026-11-22T16:13:19.571Z",
+      "type": "dispatch",
+      "stage": "billing",
+      "message": "session f411e3ef-c043-44ec-afe5-ee1740a783e0 dibuat untuk billing (percobaan ke-1)"
+    },
+    {
+      "at": "2026-11-22T16:15:15.294Z",
+      "type": "stage_done",
+      "stage": "billing",
+      "message": "output billing lolos validasi kantor"
+    },
+    {
+      "at": "2026-11-22T16:15:15.294Z",
+      "type": "workflow_completed",
+      "stage": null,
+      "message": "pipeline selesai; draft invoice menunggu approve founder"
+    },
+    {
+      "at": "2026-11-22T16:31:12.951Z",
+      "type": "approve",
+      "stage": "billing",
+      "message": "39 invoice di-approve founder"
+    }
+  ]
+}

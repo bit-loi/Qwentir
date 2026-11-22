@@ -68,15 +68,34 @@ An 8-bit office — styled after Soul Knight / ChillyRoom pixel rooms (dark surr
 
 ```bash
 npm run start:office       # or: node office/server.js  → http://localhost:8787
-npm test                   # bridge test suite (node:test, zero credits consumed)
+npm test                   # bridge + workflow test suites (stub CLI, zero credits consumed)
+npm run validate           # validasi bisnis output pipeline vs contracts.json + answer_key.csv
 ```
 
+- **Workflow panel (founder control)** — overlay di kiri atas kantor: status workflow, pill stage INTAKE → RECON → BILLING sesuai state dispatcher asli, log handoff, dan tombol **MULAI / PAUSE / RESUME / STOP / RETRY / APPROVE(n)** yang semuanya terhubung ke backend (`/api/workflow/*`). Satu klik MULAI menjalankan pipeline penuh tanpa klik manual antar agent.
 - **Full-screen office map** — the pixel-art room regenerates to match your viewport aspect (no letterbox): every Waker becomes an employee wandering between desk, coffee machine, and meeting table. While a session turn is running they sit at their desk typing with a "…" bubble and a glowing monitor.
 - **Pet-style interactions** — click an employee (or the office cat) and they jump with a heart/HI! emote, vscode-pet style; click the floor to throw a ball that the nearest idle worker runs to fetch. Double-click an employee (or the roster CHAT button) to open the chat drawer.
 - **Chat & assign tasks** — the drawer opens a real QoderWake session (`session create / send / events` through the local daemon CLI), bound to this repo as cwd so the Waker reads `data/`, `agents/`, and `output/` directly. Quick-task buttons per role seed typical Qwentir jobs (intake validation, reconciliation sweeps, invoice drafts).
 - **File attachments** — the `FILE+` button in the chat drawer uploads DO/POD files (or anything ≤ 20 MB) into `inbox/` (gitignored) and appends their repo paths to the task message, so the Waker opens them straight from disk.
 - **Roster & hiring** — the bottom strip maps Wakers to Qwentir roles (Intake / Reconciliation / Billing) by description keywords. An unfilled desk shows `VACANT`; **HIRE** creates a new Waker in your QoderWake (`waker create`) from the role persona under `agents/`.
 - **HUD** — daemon online/offline, running session count, repo path, plus the Qwen & Alibaba Cloud marks.
+
+## Workflow dispatcher & founder controls
+
+Founder menekan **MULAI** sekali; dispatcher di `office/server.js` mengoper kerja antar agent secara otomatis dan tidak pernah memicu stage berikutnya sebelum output stage sebelumnya lolos validasi:
+
+```
+MULAI → session Intake → validasi output/intake/* → handoff → session Reconciliation
+      → validasi output/reconciliation/* → handoff → session Billing
+      → validasi output/billing/* → COMPLETED → draft menunggu APPROVE founder
+```
+
+- **State persist** di `output/workflow/state.json` (workflowId, status, per-stage session/attempts/cursor, log event handoff) — tahan restart server; setiap mutasi ditulis atomik.
+- **Gerbang validasi** per stage: file wajib ada + schema & angka dasar sesuai `agents/*-bible.md` (field kosong, volume non-numerik, status asing, jumlah invoice != jumlah matched → stage `failed`, handoff dibatalkan).
+- **Kontrol founder**: `PAUSE` menahan dispatch (turn berjalan dibiarkan selesai dan dicatat `handoff_held`), `RESUME` melanjutkan dari state terakhir, `STOP` menghentikan session aktif tanpa menghapus output, `RETRY` mengulang stage gagal saja (stage done tidak diulang), `APPROVE` mengubah invoice `draft → approved` + menulis ledger `output/billing/approvals.json` + memperbarui `rekap_piutang.csv`; approve ulang ditolak.
+- **Anti duplikat**: start kedua saat workflow aktif ditolak; stage yang sudah punya session running tidak dibuatkan session baru; event daemon dibaca dengan cursor `sequence_num` sehingga tidak ada event terproses dua kali.
+- **Validasi bisnis mendalam** (hitungan susut/toleransi/denda/total vs `data/contracts.json` + klasifikasi vs `data/answer_key.csv`) ada di `scripts/validate-output.js` — laporan JSON ditulis ke `output/workflow/validation_report.json`. Validator hanya dipakai founder/test, tidak pernah oleh agent.
+- **Test tanpa kredit**: `office/test-workflow.js` menjalankan server sungguhan terhadap stub CLI (`office/test/stub-qoderwake.js`) lewat env `QODERWAKE_BIN`, dengan repo temp lewat `QWENTIR_ROOT` dan tick cepat lewat `QWENTIR_WF_TICK_MS`. Bin `.js` dijalankan via `process.execPath` (spawn `.cmd` tanpa shell di Windows melempar EINVAL).
 
 The bridge (`office/server.js`) is a zero-dependency Node HTTP server that proxies the local QoderWake daemon via the `qoderwake` CLI; the frontend (`office/public/`) is vanilla-JS canvas — no build step, no new npm dependencies. `office/test.js` covers static serving, path-traversal guard, roles payload, upload round-trip, and input validation without ever creating an agent session.
 
@@ -86,8 +105,11 @@ The bridge (`office/server.js`) is a zero-dependency Node HTTP server that proxi
 agents/     Identity, persona, and "bible" (operating rules) for each of the 3 agents
 office/     Virtual Office UI — 8-bit office wired to the local QoderWake daemon
   server.js         Zero-dep bridge: static files + /api/* → qoderwake CLI
+                    + workflow dispatcher (handoff, pause/resume/stop/retry, approve)
   roles.json        Qwentir role ↔ Waker mapping, quick tasks, hire package
-  test.js           Bridge test suite (npm test — node:test, zero credits)
+  test.js           Bridge test suite (npm run test:office — zero credits)
+  test-workflow.js  Workflow dispatcher + validator test suite (stub CLI, zero credits)
+  test/stub-qoderwake.js  Stub CLI untuk test (QODERWAKE_BIN); bukan kode produksi
   public/           Canvas office sim (index.html, office.js, sprites.js, style.css, favicon.svg)
 data/       Seed data + contract terms used by the pipeline
   contracts.json    Tariff, 0.5% shrinkage tolerance, penalty rules, 3-day POD overdue limit
@@ -99,6 +121,7 @@ output/     Generated field documents (DO & POD, PDF/JPG) + admin recap + answer
   screenshots/      Virtual Office verification screenshots (gitignored working dir)
 scripts/    Deterministic dummy-data generator
   generate-dataset.js   One-command orchestrator (text + documents)
+  validate-output.js    Validator bisnis output pipeline vs contracts.json + answer_key.csv
   lib/{rng,data,svg,render,textdata}.js
   inspect-pdf.mjs       Dev helper to rasterize generated PDFs (mupdf)
 assets/fonts/           Bundled handwriting/UI fonts (OFL: Caveat, Patrick Hand, Kalam, PT Sans)
@@ -127,11 +150,11 @@ The run is fully reproducible: a fixed seed (`20261118`) guarantees byte-identic
 ## Roadmap
 
 - [x] Dummy dataset: ~50 DOs + PODs, intentionally dirty
-- [ ] Intake Agent — end-to-end
-- [ ] Reconciliation Agent
-- [ ] Billing Agent — 3 agents auto-handoff
-- [x] Virtual Office UI (8-bit office, chat & task assignment via QoderWake daemon)
-- [ ] Large-batch test (real output, credits consumed)
+- [x] Workflow dispatcher — auto-handoff Intake → Reconciliation → Billing dengan gerbang validasi output, retry/pause/resume/stop (teruji via stub CLI, zero credits)
+- [x] Founder controls di Virtual Office: MULAI / PAUSE / RESUME / STOP / RETRY / APPROVE + ledger approve
+- [x] Validator bisnis independen (`scripts/validate-output.js`) vs `contracts.json` + `answer_key.csv`
+- [x] Virtual Office UI (8-bit office, chat & task assignment, workflow panel)
+- [x] Large-batch test dengan agent QoderWake asli (real output, credits consumed) — workflow `WF-2026-11-22T15-24-37`: 85 order + 90 POD diproses, auto-handoff Intake→Reconciliation→Billing, 39 invoice draft (total Rp 292.877.500) lalu di-approve; `scripts/validate-output.js` **LULUS SEMUA CHECK** vs `contracts.json` + 20 baris `answer_key.csv`
 - [ ] Demo video (≤ 5 min)
 
 ## Hackathon context
